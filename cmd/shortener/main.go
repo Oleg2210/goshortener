@@ -31,7 +31,8 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "http://localhost:8080/%s", id)
+	resolveAddress := config.ResolveAddress + "/%s"
+	fmt.Fprintf(w, resolveAddress, id)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
@@ -46,9 +47,9 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	config.ParseFlags()
 	router := chi.NewRouter()
-
 	router.Get("/{id}", handleGet)
 	router.Post("/", handlePost)
-	http.ListenAndServe(":8080", router)
+	http.ListenAndServe(config.HostAddres, router)
 }
