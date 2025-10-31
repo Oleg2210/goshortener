@@ -8,6 +8,7 @@ import (
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/repository"
 	"github.com/Oleg2210/goshortener/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 var repo = repository.NewMemoryRepository()
@@ -45,17 +46,9 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/" {
-			handlePost(w, r)
-			return
-		}
-		if r.Method == http.MethodGet {
-			handleGet(w, r)
-			return
-		}
-		http.Error(w, "bad request", http.StatusBadRequest)
-	})
+	router := chi.NewRouter()
 
-	http.ListenAndServe(":8080", nil)
+	router.Get("/{id}", handleGet)
+	router.Post("/", handlePost)
+	http.ListenAndServe(":8080", router)
 }
