@@ -24,7 +24,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 
 	id, err := shortenerService.Shorten(url)
 
-	if err == nil {
+	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
