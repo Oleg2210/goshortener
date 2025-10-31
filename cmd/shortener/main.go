@@ -3,40 +3,40 @@ package main
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
-	"time"
+
+	"github.com/Oleg2210/goshortener/internal/config"
+	"github.com/Oleg2210/goshortener/internal/repository"
+	"github.com/Oleg2210/goshortener/internal/service"
 )
 
-var store = map[string]string{}
-
-const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func randomID() string {
-	n := rnd.Intn(6) + 5 // 5–10 символов
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[rnd.Intn(len(letters))]
-	}
-	return string(b)
-}
+var repo = repository.NewMemoryRepository()
+var shortenerService = service.NewShortenerService(
+	repo,
+	config.Letters,
+	config.MinLength,
+	config.MaxLength,
+)
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	url := string(body)
-	id := randomID()
 
-	store[id] = url
+	id, err := shortenerService.Shorten(url)
+
+	if err == nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "http://localhost:8080/%s", id)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
-	url, ok := store[id]
-	if !ok {
+	url, err := shortenerService.GetUrl(id)
+	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
