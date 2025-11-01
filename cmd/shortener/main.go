@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/repository"
@@ -51,5 +52,14 @@ func main() {
 	router := chi.NewRouter()
 	router.Get("/{id}", handleGet)
 	router.Post("/", handlePost)
-	http.ListenAndServe(config.HostAddres, router)
+
+	server := &http.Server{
+		Addr:         config.PortAddres,
+		Handler:      router,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 45 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	server.ListenAndServe()
 }
