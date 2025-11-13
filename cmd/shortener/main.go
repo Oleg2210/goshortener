@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/repository"
@@ -31,7 +32,8 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "http://localhost:8080/%s", id)
+	resolveAddress := config.ResolveAddress + "/%s"
+	fmt.Fprintf(w, resolveAddress, id)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
@@ -46,9 +48,18 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	config.ParseFlags()
 	router := chi.NewRouter()
-
 	router.Get("/{id}", handleGet)
 	router.Post("/", handlePost)
-	http.ListenAndServe(":8080", router)
+
+	server := &http.Server{
+		Addr:         config.PortAddres,
+		Handler:      router,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 45 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	server.ListenAndServe()
 }
