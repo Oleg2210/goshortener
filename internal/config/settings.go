@@ -1,6 +1,9 @@
 package config
 
-import "flag"
+import (
+	"flag"
+	"os"
+)
 
 // символы, которые будут использоваться при генерации id
 const Letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -20,4 +23,12 @@ func ParseFlags() {
 	flag.StringVar(&PortAddres, "a", ":8080", "server adress with port")
 	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "response URL")
 	flag.Parse()
+
+	if envPortAddres := os.Getenv("SERVER_ADDRESS"); envPortAddres != "" {
+		PortAddres = envPortAddres
+	}
+
+	if envResolveAddress := os.Getenv("BASE_URL"); envResolveAddress != "" {
+		ResolveAddress = envResolveAddress
+	}
 }
