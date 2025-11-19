@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/repository"
+	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -65,18 +65,28 @@ func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
-	url := string(body)
+	var req serializers.Request
 
-	id, err := shortenerService.Shorten(url)
+	if err := req.UnmarshalJSON(body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	id, err := shortenerService.Shorten(req.URL)
 
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
+	resp := serializers.Response{
+		Result: config.ResolveAddress + "/" + id,
+	}
+	jsonBytes, _ := resp.MarshalJSON()
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	resolveAddress := config.ResolveAddress + "/%s"
-	fmt.Fprintf(w, resolveAddress, id)
+	w.Write(jsonBytes)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +108,7 @@ func main() {
 	router.Use(LoggingMiddleware(logger))
 	router.Get("/{id}", handleGet)
 	router.Post("/", handlePost)
+	router.Post("/api/shorten", handlePost)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,
