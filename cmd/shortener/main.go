@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -65,6 +66,22 @@ func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
+	url := string(body)
+
+	id, err := shortenerService.Shorten(url)
+
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	resolveAddress := config.ResolveAddress + "/%s"
+	fmt.Fprintf(w, resolveAddress, id)
+}
+
+func handlePostJson(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
 	var req serializers.Request
 
 	if err := req.UnmarshalJSON(body); err != nil {
@@ -108,7 +125,7 @@ func main() {
 	router.Use(LoggingMiddleware(logger))
 	router.Get("/{id}", handleGet)
 	router.Post("/", handlePost)
-	router.Post("/api/shorten", handlePost)
+	router.Post("/api/shorten", handlePostJson)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,
