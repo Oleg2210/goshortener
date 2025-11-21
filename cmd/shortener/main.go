@@ -10,7 +10,6 @@ import (
 	"github.com/Oleg2210/goshortener/internal/repository"
 	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
-	compres "github.com/Oleg2210/goshortener/pkg/middleware/compress"
 	"github.com/Oleg2210/goshortener/pkg/middleware/logging"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -83,7 +82,6 @@ func main() {
 	logger, _ := zap.NewProduction()
 
 	router.Use(logging.LoggingMiddleware(logger))
-	router.Use(compres.GzipMiddleware)
 	router.Get("/{id}", handleGet)
 	router.Post("/", handlePost)
 	router.Post("/api/shorten", handlePostJson)
