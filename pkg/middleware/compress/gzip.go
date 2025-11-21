@@ -31,68 +31,35 @@ func (gr *gzipReader) Close() error {
 
 type gzipWriter struct {
 	http.ResponseWriter
-	gz        *gzip.Writer
-	enabled   bool
-	wroteHdr  bool
-	minLength int
-	buf       []byte
+	gz      *gzip.Writer
+	enabled bool
 }
-
-func newGzipWriter(w http.ResponseWriter) *gzipWriter {
+.
+func NewGzipWriter(w http.ResponseWriter) *gzipWriter {
 	return &gzipWriter{
 		ResponseWriter: w,
-		minLength:      140,
-		buf:            make([]byte, 0, 1024),
 	}
-}
-
-func (gw *gzipWriter) WriteHeader(code int) {
-	if code < 200 || code == 204 || code == 304 {
-		gw.enabled = false
-	}
-
-	gw.wroteHdr = true
-
-	if gw.enabled {
-		gw.Header().Set("Content-Encoding", "gzip")
-		gw.Header().Del("Content-Length")
-	}
-
-	gw.ResponseWriter.WriteHeader(code)
-}
-
-func (gw *gzipWriter) Write(p []byte) (int, error) {
-	if !gw.wroteHdr {
-		gw.buf = append(gw.buf, p...)
-		return len(p), nil
-	}
-
-	if !gw.enabled {
-		return gw.ResponseWriter.Write(p)
-	}
-
-	return gw.gz.Write(p)
 }
 
 func (gw *gzipWriter) startGzip() {
 	gw.gz = gzip.NewWriter(gw.ResponseWriter)
 	gw.enabled = true
+	gw.Header().Set("Content-Encoding", "gzip")
+	gw.Header().Set("Vary", "Accept-Encoding")
+}
+.
+func (gw *gzipWriter) Write(p []byte) (int, error) {
+	if !gw.enabled {
+		return gw.ResponseWriter.Write(p)
+	}
+	return gw.gz.Write(p)
 }
 
 func (gw *gzipWriter) Close() error {
-	if !gw.wroteHdr {
-		return nil
-	}
-	if gw.enabled {
+	if gw.gz != nil {
 		return gw.gz.Close()
 	}
 	return nil
-}
-
-func (gw *gzipWriter) Flush() {
-	if f, ok := gw.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
 }
 
 func GzipMiddleware(next http.Handler) http.Handler {
@@ -108,20 +75,18 @@ func GzipMiddleware(next http.Handler) http.Handler {
 			defer gr.Close()
 		}
 
-		clientSupportsGzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
-		if !clientSupportsGzip {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(w, r)
 			return
 		}
+
+		ct := w.Header().Get("Content-Type")
+		if strings.Contains(ct, "application/json") || strings.Contains(ct, "text/html") {
+			w := NewGzipWriter(w)
+			w.startGzip()
+			defer w.Close()
+		}
+
 		next.ServeHTTP(w, r)
-
-		// gw := newGzipWriter(w)
-		// defer gw.Close()
-
-		// ct := w.Header().Get("Content-Type")
-		// if strings.Contains(ct, "application/json") || strings.Contains(ct, "text/html") {
-		// 	gw.startGzip()
-		// 	_, _ = gw.gz.Write(gw.buf)
-		// }
 	})
 }
