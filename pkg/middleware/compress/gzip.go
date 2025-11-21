@@ -115,13 +115,13 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 
-		gw := newGzipWriter(w)
-		defer gw.Close()
+		// gw := newGzipWriter(w)
+		// defer gw.Close()
 
-		ct := w.Header().Get("Content-Type")
-		if strings.Contains(ct, "application/json") || strings.Contains(ct, "text/html") {
-			gw.startGzip()
-			_, _ = gw.gz.Write(gw.buf)
-		}
+		// ct := w.Header().Get("Content-Type")
+		// if strings.Contains(ct, "application/json") || strings.Contains(ct, "text/html") {
+		// 	gw.startGzip()
+		// 	_, _ = gw.gz.Write(gw.buf)
+		// }
 	})
 }
