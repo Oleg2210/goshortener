@@ -34,7 +34,7 @@ type gzipWriter struct {
 	gz      *gzip.Writer
 	enabled bool
 }
-.
+
 func NewGzipWriter(w http.ResponseWriter) *gzipWriter {
 	return &gzipWriter{
 		ResponseWriter: w,
