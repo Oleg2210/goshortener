@@ -47,7 +47,7 @@ func (gw *gzipWriter) startGzip() {
 	gw.Header().Set("Content-Encoding", "gzip")
 	gw.Header().Set("Vary", "Accept-Encoding")
 }
-.
+
 func (gw *gzipWriter) Write(p []byte) (int, error) {
 	if !gw.enabled {
 		return gw.ResponseWriter.Write(p)
