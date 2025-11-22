@@ -16,12 +16,12 @@ import (
 
 func TestReplacePOST(t *testing.T) {
 
-	type test_data struct {
+	type testData struct {
 		name string
 		code int
 	}
 
-	test1 := test_data{
+	test1 := testData{
 		name: "Good case",
 		code: http.StatusCreated,
 	}
@@ -57,12 +57,12 @@ func TestReplacePOST(t *testing.T) {
 }
 
 func TestHandleGet(t *testing.T) {
-	type test_data struct {
+	type testData struct {
 		name string
 		code int
 	}
 
-	test1 := test_data{name: "No id", code: http.StatusBadRequest}
+	test1 := testData{name: "No id", code: http.StatusBadRequest}
 
 	t.Run(test1.name, func(t *testing.T) {
 		config.ParseFlags()
@@ -87,5 +87,4 @@ func TestHandleGet(t *testing.T) {
 		assert.Equal(t, test1.code, result.StatusCode)
 
 	})
-
 }
