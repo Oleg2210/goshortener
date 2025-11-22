@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"io"
@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Oleg2210/goshortener/internal/config"
-	"github.com/Oleg2210/goshortener/internal/handler"
 	"github.com/Oleg2210/goshortener/internal/repository"
 	"github.com/Oleg2210/goshortener/internal/service"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +35,7 @@ func TestReplacePOST(t *testing.T) {
 			config.MinLength,
 			config.MaxLength,
 		)
-		app := handler.App{
+		app := App{
 			ShortenerService: shortenerService,
 		}
 
@@ -74,7 +73,7 @@ func TestHandleGet(t *testing.T) {
 			config.MinLength,
 			config.MaxLength,
 		)
-		app := handler.App{
+		app := App{
 			ShortenerService: shortenerService,
 		}
 
