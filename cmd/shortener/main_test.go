@@ -7,6 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Oleg2210/goshortener/internal/config"
+	"github.com/Oleg2210/goshortener/internal/handler"
+	"github.com/Oleg2210/goshortener/internal/repository"
+	"github.com/Oleg2210/goshortener/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,12 +28,24 @@ func TestReplacePOST(t *testing.T) {
 	}
 
 	t.Run(test1.name, func(t *testing.T) {
+		config.ParseFlags()
+		repo := repository.NewMemoryRepository(config.FileStoragePath)
+		shortenerService := service.NewShortenerService(
+			repo,
+			config.Letters,
+			config.MinLength,
+			config.MaxLength,
+		)
+		app := handler.App{
+			ShortenerService: shortenerService,
+		}
+
 		requestBody := strings.NewReader("https://yandex.kz")
 		request := httptest.NewRequest(http.MethodPost, "/", requestBody)
 		request.Header.Set("Content-Type", "text/plain")
 
 		responseRecorder := httptest.NewRecorder()
-		handlePost(responseRecorder, request)
+		app.HandlePost(responseRecorder, request)
 		result := responseRecorder.Result()
 		defer result.Body.Close()
 		body, err := io.ReadAll(result.Body)
@@ -50,10 +66,22 @@ func TestHandleGet(t *testing.T) {
 	test1 := test_data{name: "No id", code: http.StatusBadRequest}
 
 	t.Run(test1.name, func(t *testing.T) {
+		config.ParseFlags()
+		repo := repository.NewMemoryRepository(config.FileStoragePath)
+		shortenerService := service.NewShortenerService(
+			repo,
+			config.Letters,
+			config.MinLength,
+			config.MaxLength,
+		)
+		app := handler.App{
+			ShortenerService: shortenerService,
+		}
+
 		request := httptest.NewRequest(http.MethodGet, "/test/", nil)
 
 		responseRecorder := httptest.NewRecorder()
-		handleGet(responseRecorder, request)
+		app.HandleGet(responseRecorder, request)
 
 		result := responseRecorder.Result()
 		defer result.Body.Close()
