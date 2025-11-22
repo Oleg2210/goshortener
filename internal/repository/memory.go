@@ -19,6 +19,7 @@ type MemoryRepository struct {
 func NewMemoryRepository(fileStoragePath string) *MemoryRepository {
 	repo := &MemoryRepository{
 		data: make(map[string]string),
+		path: fileStoragePath,
 	}
 
 	repo.loadDataFromFile()
