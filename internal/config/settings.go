@@ -15,13 +15,16 @@ const MinLength = 5
 const MaxLength = 10
 
 var (
-	PortAddres     string
-	ResolveAddress string
+	PortAddres      string
+	ResolveAddress  string
+	FileStoragePath string
 )
 
 func ParseFlags() {
 	flag.StringVar(&PortAddres, "a", ":8080", "server adress with port")
 	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "response URL")
+	flag.StringVar(&FileStoragePath, "f", "urls-storage.json", "path to uls storage")
+
 	flag.Parse()
 
 	if envPortAddres := os.Getenv("SERVER_ADDRESS"); envPortAddres != "" {
@@ -30,5 +33,9 @@ func ParseFlags() {
 
 	if envResolveAddress := os.Getenv("BASE_URL"); envResolveAddress != "" {
 		ResolveAddress = envResolveAddress
+	}
+
+	if fileStorage := os.Getenv("FILE_STORAGE_PATH"); fileStorage != "" {
+		FileStoragePath = fileStorage
 	}
 }
