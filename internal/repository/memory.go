@@ -4,7 +4,7 @@ type MemoryRepository struct {
 	data map[string]string
 }
 
-func NewMemoryRepository() *MemoryRepository {
+func NewMemoryRepository(fileStoragePath string) *MemoryRepository {
 	return &MemoryRepository{
 		data: make(map[string]string),
 	}
