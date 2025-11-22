@@ -27,7 +27,6 @@ func TestReplacePOST(t *testing.T) {
 	}
 
 	t.Run(test1.name, func(t *testing.T) {
-		config.ParseFlags()
 		repo := repository.NewMemoryRepository(config.FileStoragePath)
 		shortenerService := service.NewShortenerService(
 			repo,
@@ -65,7 +64,6 @@ func TestHandleGet(t *testing.T) {
 	test1 := testData{name: "No id", code: http.StatusBadRequest}
 
 	t.Run(test1.name, func(t *testing.T) {
-		config.ParseFlags()
 		repo := repository.NewMemoryRepository(config.FileStoragePath)
 		shortenerService := service.NewShortenerService(
 			repo,

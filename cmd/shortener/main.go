@@ -34,7 +34,7 @@ func main() {
 	router.Use(compres.GzipMiddleware)
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
-	router.Post("/api/shorten", app.HandlePostJson)
+	router.Post("/api/shorten", app.HandlePostJSON)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,

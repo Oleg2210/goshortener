@@ -30,7 +30,7 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, resolveAddress, id)
 }
 
-func (a *App) HandlePostJson(w http.ResponseWriter, r *http.Request) {
+func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	var req serializers.Request
 
