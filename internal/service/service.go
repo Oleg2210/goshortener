@@ -10,7 +10,7 @@ import (
 
 var ErrOutOfCombinations = errors.New("possible combinations are running out")
 
-var ErrIdDoesNotExists = errors.New("such id does not exist")
+var ErrIDDoesNotExists = errors.New("such id does not exist")
 
 type ShortenerService struct {
 	repo      repository.URLRepository
@@ -35,12 +35,12 @@ func NewShortenerService(
 }
 
 func (service *ShortenerService) generateRandomID(letters string, size int) string {
-	random_text := make([]byte, size)
-	for i := range random_text {
-		random_index := service.rnd.Intn(len(letters))
-		random_text[i] = letters[random_index]
+	randomText := make([]byte, size)
+	for i := range randomText {
+		randomIndex := service.rnd.Intn(len(letters))
+		randomText[i] = letters[randomIndex]
 	}
-	return string(random_text)
+	return string(randomText)
 }
 
 func (service *ShortenerService) Shorten(
@@ -64,10 +64,10 @@ func (service *ShortenerService) Shorten(
 	return "", ErrOutOfCombinations
 }
 
-func (service *ShortenerService) GetUrl(id string) (string, error) {
+func (service *ShortenerService) GetURL(id string) (string, error) {
 	url, exists := service.repo.Get(id)
 	if !exists {
-		return "", ErrIdDoesNotExists
+		return "", ErrIDDoesNotExists
 	}
 
 	return url, nil

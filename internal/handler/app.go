@@ -17,9 +17,9 @@ type App struct {
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
-	fullUrl := string(body)
+	fullURL := string(body)
 
-	id, err := a.ShortenerService.Shorten(fullUrl)
+	id, err := a.ShortenerService.Shorten(fullURL)
 
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -28,13 +28,13 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 
-	resolveUrl, err := url.JoinPath(config.ResolveAddress, id)
+	resolveURL, err := url.JoinPath(config.ResolveAddress, id)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(w, resolveUrl)
+	fmt.Fprint(w, resolveURL)
 }
 
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +53,7 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resulUrl, err := url.JoinPath(config.ResolveAddress, id)
+	resultURL, err := url.JoinPath(config.ResolveAddress, id)
 
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -61,7 +61,7 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := serializers.Response{
-		Result: resulUrl,
+		Result: resultURL,
 	}
 	jsonBytes, _ := resp.MarshalJSON()
 
@@ -72,7 +72,7 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
-	url, err := a.ShortenerService.GetUrl(id)
+	url, err := a.ShortenerService.GetURL(id)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
