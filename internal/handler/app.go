@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/serializers"
@@ -16,18 +17,24 @@ type App struct {
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
-	url := string(body)
+	fullUrl := string(body)
 
-	id, err := a.ShortenerService.Shorten(url)
+	id, err := a.ShortenerService.Shorten(fullUrl)
 
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	resolveAddress := config.ResolveAddress + "/%s"
-	fmt.Fprintf(w, resolveAddress, id)
+
+	resolveUrl, err := url.JoinPath(config.ResolveAddress, id)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, resolveUrl)
 }
 
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
@@ -42,12 +49,19 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	id, err := a.ShortenerService.Shorten(req.URL)
 
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	resulUrl, err := url.JoinPath(config.ResolveAddress, id)
+
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	resp := serializers.Response{
-		Result: config.ResolveAddress + "/" + id,
+		Result: resulUrl,
 	}
 	jsonBytes, _ := resp.MarshalJSON()
 
@@ -60,7 +74,7 @@ func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
 	url, err := a.ShortenerService.GetUrl(id)
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Location", url)

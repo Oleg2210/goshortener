@@ -27,10 +27,9 @@ func TestReplacePOST(t *testing.T) {
 	}
 
 	t.Run(test1.name, func(t *testing.T) {
-		repo := repository.NewMemoryRepository(config.FileStoragePath)
+		repo := repository.NewMemoryRepository()
 		shortenerService := service.NewShortenerService(
 			repo,
-			config.Letters,
 			config.MinLength,
 			config.MaxLength,
 		)
@@ -64,10 +63,9 @@ func TestHandleGet(t *testing.T) {
 	test1 := testData{name: "No id", code: http.StatusBadRequest}
 
 	t.Run(test1.name, func(t *testing.T) {
-		repo := repository.NewMemoryRepository(config.FileStoragePath)
+		repo := repository.NewMemoryRepository()
 		shortenerService := service.NewShortenerService(
 			repo,
-			config.Letters,
 			config.MinLength,
 			config.MaxLength,
 		)
@@ -82,7 +80,7 @@ func TestHandleGet(t *testing.T) {
 
 		result := responseRecorder.Result()
 		defer result.Body.Close()
-		assert.Equal(t, test1.code, result.StatusCode)
 
+		assert.Equal(t, test1.code, result.StatusCode)
 	})
 }

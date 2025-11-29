@@ -5,9 +5,6 @@ import (
 	"os"
 )
 
-// символы, которые будут использоваться при генерации id
-const Letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
 // минимальная длина id
 const MinLength = 5
 
@@ -27,15 +24,15 @@ func ParseFlags() {
 
 	flag.Parse()
 
-	if envPortAddres := os.Getenv("SERVER_ADDRESS"); envPortAddres != "" {
+	if envPortAddres, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
 		PortAddres = envPortAddres
 	}
 
-	if envResolveAddress := os.Getenv("BASE_URL"); envResolveAddress != "" {
+	if envResolveAddress, ok := os.LookupEnv("BASE_URL"); ok {
 		ResolveAddress = envResolveAddress
 	}
 
-	if fileStorage := os.Getenv("FILE_STORAGE_PATH"); fileStorage != "" {
+	if fileStorage, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		FileStoragePath = fileStorage
 	}
 }

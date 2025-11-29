@@ -22,14 +22,13 @@ type ShortenerService struct {
 
 func NewShortenerService(
 	repo repository.URLRepository,
-	letters string,
 	minLength int,
 	maxLength int,
 ) *ShortenerService {
 	return &ShortenerService{
 		repo:      repo,
 		rnd:       rand.New(rand.NewSource(time.Now().UnixNano())),
-		letters:   letters,
+		letters:   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
 		minLength: minLength,
 		maxLength: maxLength,
 	}

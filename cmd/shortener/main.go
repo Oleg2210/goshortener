@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -17,11 +18,25 @@ import (
 func main() {
 	config.ParseFlags()
 	router := chi.NewRouter()
-	logger, _ := zap.NewProduction()
-	repo := repository.NewMemoryRepository(config.FileStoragePath)
+
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(fmt.Errorf("failed to init zap logger: %w", err))
+	}
+
+	var repo repository.URLRepository
+	var repoErr error
+
+	if config.FileStoragePath != "" {
+		repo, repoErr = repository.NewFileRepository(config.FileStoragePath)
+	}
+
+	if config.FileStoragePath == "" || repoErr != nil {
+		repo = repository.NewMemoryRepository()
+	}
+
 	shortenerService := service.NewShortenerService(
 		repo,
-		config.Letters,
 		config.MinLength,
 		config.MaxLength,
 	)
