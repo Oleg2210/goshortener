@@ -1,9 +1,9 @@
 package config
 
-import "flag"
-
-// символы, которые будут использоваться при генерации id
-const Letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+import (
+	"flag"
+	"os"
+)
 
 // минимальная длина id
 const MinLength = 5
@@ -12,12 +12,27 @@ const MinLength = 5
 const MaxLength = 10
 
 var (
-	PortAddres     string
-	ResolveAddress string
+	PortAddres      string
+	ResolveAddress  string
+	FileStoragePath string
 )
 
 func ParseFlags() {
 	flag.StringVar(&PortAddres, "a", ":8080", "server adress with port")
 	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "response URL")
+	flag.StringVar(&FileStoragePath, "f", "urls-storage.json", "path to uls storage")
+
 	flag.Parse()
+
+	if envPortAddres, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
+		PortAddres = envPortAddres
+	}
+
+	if envResolveAddress, ok := os.LookupEnv("BASE_URL"); ok {
+		ResolveAddress = envResolveAddress
+	}
+
+	if fileStorage, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
+		FileStoragePath = fileStorage
+	}
 }

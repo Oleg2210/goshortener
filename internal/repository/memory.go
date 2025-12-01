@@ -5,9 +5,11 @@ type MemoryRepository struct {
 }
 
 func NewMemoryRepository() *MemoryRepository {
-	return &MemoryRepository{
+	repo := &MemoryRepository{
 		data: make(map[string]string),
 	}
+
+	return repo
 }
 
 func (repo *MemoryRepository) Save(id string, url string) error {
