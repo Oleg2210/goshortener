@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"os"
+	"sync"
 )
 
 type record struct {
@@ -14,6 +15,7 @@ type record struct {
 type FileRepository struct {
 	memoryRepo *MemoryRepository
 	path       string
+	mu         sync.Mutex
 }
 
 func NewFileRepository(fileStoragePath string) (*FileRepository, error) {
@@ -70,6 +72,9 @@ func (repo *FileRepository) saveToFile() error {
 }
 
 func (repo *FileRepository) Save(id string, url string) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
 	_, exists := repo.memoryRepo.Get(id)
 	if exists {
 		return ErrAlreadyExists

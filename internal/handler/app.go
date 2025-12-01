@@ -9,14 +9,23 @@ import (
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
+	"go.uber.org/zap"
 )
 
 type App struct {
 	ShortenerService *service.ShortenerService
+	Logger           *zap.Logger
 }
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		a.Logger.Error("failed to read request body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	fullURL := string(body)
 
 	id, err := a.ShortenerService.Shorten(fullURL)
@@ -30,6 +39,7 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 
 	resolveURL, err := url.JoinPath(config.ResolveAddress, id)
 	if err != nil {
+		a.Logger.Error("error while url join", zap.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -38,7 +48,14 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		a.Logger.Error("failed to read request body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	var req serializers.Request
 
 	if err := req.UnmarshalJSON(body); err != nil {
@@ -56,7 +73,8 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	resultURL, err := url.JoinPath(config.ResolveAddress, id)
 
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		a.Logger.Error("error while url join", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

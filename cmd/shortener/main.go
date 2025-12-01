@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
@@ -21,7 +22,8 @@ func main() {
 
 	logger, err := zap.NewProduction()
 	if err != nil {
-		panic(fmt.Errorf("failed to init zap logger: %w", err))
+		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
+		os.Exit(1)
 	}
 
 	var repo repository.URLRepository
@@ -43,6 +45,7 @@ func main() {
 
 	app := handler.App{
 		ShortenerService: shortenerService,
+		Logger:           logger,
 	}
 
 	router.Use(logging.LoggingMiddleware(logger))
