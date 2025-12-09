@@ -53,6 +53,7 @@ func main() {
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
+	router.Get("/ping", app.HandlePing)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,
