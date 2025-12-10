@@ -14,14 +14,14 @@ func NewMemoryRepository() *MemoryRepository {
 	return repo
 }
 
-func (repo *MemoryRepository) Save(id string, url string) error {
+func (repo *MemoryRepository) Save(id string, url string) (string, error) {
 	_, exists := repo.data[id]
 	if exists {
-		return ErrAlreadyExists
+		return "", ErrAlreadyExists
 	}
 
 	repo.data[id] = url
-	return nil
+	return id, nil
 }
 
 func (repo *MemoryRepository) BatchSave(

@@ -13,6 +13,8 @@ var ErrOutOfCombinations = errors.New("possible combinations are running out")
 
 var ErrIDDoesNotExists = errors.New("such id does not exist")
 
+var ErrURLExists = errors.New("such url already exists")
+
 type ShortenerService struct {
 	repo      repository.URLRepository
 	rnd       *rand.Rand
@@ -52,12 +54,15 @@ func (service *ShortenerService) Shorten(
 			service.letters,
 			i,
 		)
-		err := service.repo.Save(
+		short, err := service.repo.Save(
 			id,
 			url,
 		)
 
 		if err == nil {
+			if short != id {
+				return short, ErrURLExists
+			}
 			return id, nil
 		}
 	}

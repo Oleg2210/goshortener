@@ -73,21 +73,21 @@ func (repo *FileRepository) saveToFile() error {
 	return os.WriteFile(repo.path, bytes, 0644)
 }
 
-func (repo *FileRepository) Save(id string, url string) error {
+func (repo *FileRepository) Save(id string, url string) (string, error) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
 	_, exists := repo.memoryRepo.Get(id)
 	if exists {
-		return ErrAlreadyExists
+		return "", ErrAlreadyExists
 	}
 
-	err := repo.memoryRepo.Save(id, url)
+	id, err := repo.memoryRepo.Save(id, url)
 	if err != nil {
-		return err
+		return id, err
 	}
 
-	return repo.saveToFile()
+	return id, repo.saveToFile()
 }
 
 func (repo *FileRepository) BatchSave(

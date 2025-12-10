@@ -56,9 +56,20 @@ func (repo *DBRepository) Ping() bool {
 	return error == nil
 }
 
-func (repo *DBRepository) Save(id string, url string) error {
-	_, err := repo.DB.Exec("insert into urls(short, original) values ($1, $2)", id, url)
-	return err
+func (repo *DBRepository) Save(id string, url string) (string, error) {
+	var returnedShort string
+	err := repo.DB.QueryRow(
+		`insert into urls(short, original) values ($1, $2)
+		on conflict(original) do update 
+		set original = excluded.original returning short`,
+		id,
+		url,
+	).Scan(&returnedShort)
+
+	if err != nil {
+		return "", err
+	}
+	return returnedShort, nil
 }
 
 func (repo *DBRepository) Get(id string) (string, bool) {

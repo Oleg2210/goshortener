@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +20,7 @@ type App struct {
 }
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
+	successStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -32,11 +34,15 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	id, err := a.ShortenerService.Shorten(fullURL)
 
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+		if errors.Is(err, service.ErrURLExists) {
+			successStatus = http.StatusConflict
+		} else {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(successStatus)
 
 	resolveURL, err := url.JoinPath(config.ResolveAddress, id)
 	if err != nil {
@@ -49,6 +55,7 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
+	successStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -67,8 +74,12 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	id, err := a.ShortenerService.Shorten(req.URL)
 
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+		if errors.Is(err, service.ErrURLExists) {
+			successStatus = http.StatusConflict
+		} else {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
 	}
 
 	resultURL, err := url.JoinPath(config.ResolveAddress, id)
@@ -85,7 +96,7 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	jsonBytes, _ := resp.MarshalJSON()
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(successStatus)
 	w.Write(jsonBytes)
 }
 

@@ -9,7 +9,7 @@ import (
 var ErrAlreadyExists = errors.New("id already exists")
 
 type URLRepository interface {
-	Save(id string, url string) error
+	Save(id string, url string) (string, error)
 	BatchSave(records []entities.URLRecord) error
 	Get(id string) (string, bool)
 	Ping() bool
