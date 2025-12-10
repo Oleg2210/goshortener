@@ -1,5 +1,7 @@
 package repository
 
+import "github.com/Oleg2210/goshortener/internal/entities"
+
 type MemoryRepository struct {
 	data map[string]string
 }
@@ -19,6 +21,22 @@ func (repo *MemoryRepository) Save(id string, url string) error {
 	}
 
 	repo.data[id] = url
+	return nil
+}
+
+func (repo *MemoryRepository) BatchSave(
+	records []entities.URLRecord,
+) error {
+	for _, r := range records {
+		if _, exists := repo.data[r.Short]; exists {
+			return ErrAlreadyExists
+		}
+	}
+
+	for _, r := range records {
+		repo.data[r.Short] = r.OriginalURL
+	}
+
 	return nil
 }
 

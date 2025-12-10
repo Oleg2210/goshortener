@@ -24,7 +24,7 @@ func chooseStorage() repository.URLRepository {
 			return repo
 		}
 
-		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to create db repo: %v\n", err)
 	}
 
 	if config.FileStoragePath != "" {
@@ -34,7 +34,7 @@ func chooseStorage() repository.URLRepository {
 			return repo
 		}
 
-		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to create file repo: %v\n", err)
 	}
 
 	return repository.NewMemoryRepository()
@@ -68,6 +68,7 @@ func main() {
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
+	router.Post("/api/shorten/batch", app.HandlePostBatchJSON)
 	router.Get("/ping", app.HandlePing)
 
 	server := &http.Server{

@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 
+	"github.com/Oleg2210/goshortener/internal/entities"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -70,4 +71,25 @@ func (repo *DBRepository) Get(id string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func (repo *DBRepository) BatchSave(
+	records []entities.URLRecord,
+) error {
+	tx, err := repo.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range records {
+		_, err := repo.DB.Exec("insert into urls(short, original) values ($1, $2)", r.Short, r.OriginalURL)
+
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+	}
+
+	return tx.Commit()
 }

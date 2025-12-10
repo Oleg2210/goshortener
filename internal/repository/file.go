@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"sync"
+
+	"github.com/Oleg2210/goshortener/internal/entities"
 )
 
 type record struct {
@@ -85,8 +87,21 @@ func (repo *FileRepository) Save(id string, url string) error {
 		return err
 	}
 
-	repo.saveToFile()
-	return nil
+	return repo.saveToFile()
+}
+
+func (repo *FileRepository) BatchSave(
+	records []entities.URLRecord,
+) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
+	err := repo.memoryRepo.BatchSave(records)
+	if err != nil {
+		return err
+	}
+
+	return repo.saveToFile()
 }
 
 func (repo *FileRepository) Get(id string) (string, bool) {

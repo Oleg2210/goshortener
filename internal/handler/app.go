@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/Oleg2210/goshortener/internal/config"
+	"github.com/Oleg2210/goshortener/internal/entities"
 	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
 	"go.uber.org/zap"
@@ -83,6 +84,61 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonBytes, _ := resp.MarshalJSON()
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(jsonBytes)
+}
+
+func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		a.Logger.Error("failed to read request body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	var reqItems serializers.BatchRequestItemSlice
+	if err := reqItems.UnmarshalJSON(body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	records := make([]entities.URLRecord, 0, len(reqItems))
+	for _, r := range reqItems {
+		records = append(
+			records,
+			entities.URLRecord{
+				OriginalURL: r.OriginalURL,
+				Short:       r.CorrelationID,
+			},
+		)
+	}
+
+	err = a.ShortenerService.BatchShorten(records)
+	if err != nil {
+		a.Logger.Error("error in batch saving", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	var respItems serializers.BatchResponseItemSlice
+	for _, r := range records {
+		resultURL, err := url.JoinPath(config.ResolveAddress, r.Short)
+
+		if err != nil {
+			a.Logger.Error("error while url join", zap.Error(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		response := serializers.BatchResponseItem{
+			CorrelationID: r.Short,
+			ShortURL:      resultURL,
+		}
+		respItems = append(respItems, response)
+	}
+
+	jsonBytes, _ := respItems.MarshalJSON()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonBytes)

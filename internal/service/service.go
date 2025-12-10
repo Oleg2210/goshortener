@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Oleg2210/goshortener/internal/entities"
 	"github.com/Oleg2210/goshortener/internal/repository"
 )
 
@@ -62,6 +63,12 @@ func (service *ShortenerService) Shorten(
 	}
 
 	return "", ErrOutOfCombinations
+}
+
+func (service *ShortenerService) BatchShorten(
+	records []entities.URLRecord,
+) error {
+	return service.repo.BatchSave(records)
 }
 
 func (service *ShortenerService) GetURL(id string) (string, error) {
