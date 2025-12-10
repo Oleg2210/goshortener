@@ -1,11 +1,8 @@
 package config
 
 import (
-	"database/sql"
 	"flag"
 	"os"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // минимальная длина id
@@ -19,7 +16,6 @@ var (
 	ResolveAddress  string
 	FileStoragePath string
 	DatabaseInfo    string
-	DB              *sql.DB
 )
 
 func ParseFlags() {
@@ -44,11 +40,5 @@ func ParseFlags() {
 
 	if DatabaseDSN, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		DatabaseInfo = DatabaseDSN
-	}
-
-	db, err := sql.Open("pgx", DatabaseInfo)
-
-	if err == nil {
-		DB = db
 	}
 }

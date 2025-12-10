@@ -26,3 +26,7 @@ func (repo *MemoryRepository) Get(id string) (string, bool) {
 	url, exists := repo.data[id]
 	return url, exists
 }
+
+func (repo *MemoryRepository) Ping() bool {
+	return false
+}

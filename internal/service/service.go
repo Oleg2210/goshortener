@@ -72,3 +72,7 @@ func (service *ShortenerService) GetURL(id string) (string, error) {
 
 	return url, nil
 }
+
+func (service *ShortenerService) Ping() bool {
+	return service.repo.Ping()
+}

@@ -16,6 +16,30 @@ import (
 	"go.uber.org/zap"
 )
 
+func chooseStorage() repository.URLRepository {
+	if config.DatabaseInfo != "" {
+		repo, err := repository.NewDBRepository(config.DatabaseInfo)
+
+		if err == nil {
+			return repo
+		}
+
+		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
+	}
+
+	if config.FileStoragePath != "" {
+		repo, err := repository.NewFileRepository(config.FileStoragePath)
+
+		if err == nil {
+			return repo
+		}
+
+		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
+	}
+
+	return repository.NewMemoryRepository()
+}
+
 func main() {
 	config.ParseFlags()
 	router := chi.NewRouter()
@@ -26,16 +50,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var repo repository.URLRepository
-	var repoErr error
-
-	if config.FileStoragePath != "" {
-		repo, repoErr = repository.NewFileRepository(config.FileStoragePath)
-	}
-
-	if config.FileStoragePath == "" || repoErr != nil {
-		repo = repository.NewMemoryRepository()
-	}
+	repo := chooseStorage()
 
 	shortenerService := service.NewShortenerService(
 		repo,

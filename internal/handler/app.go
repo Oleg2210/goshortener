@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/serializers"
@@ -102,16 +100,7 @@ func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
-	if config.DB == nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	err := config.DB.PingContext(ctx)
-	if err != nil {
+	if pinged := a.ShortenerService.Ping(); !pinged {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

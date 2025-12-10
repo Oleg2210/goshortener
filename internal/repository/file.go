@@ -92,3 +92,7 @@ func (repo *FileRepository) Save(id string, url string) error {
 func (repo *FileRepository) Get(id string) (string, bool) {
 	return repo.memoryRepo.Get(id)
 }
+
+func (repo *FileRepository) Ping() bool {
+	return false
+}
