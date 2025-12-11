@@ -20,29 +20,29 @@ type App struct {
 }
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
-	successStatus := http.StatusCreated
+	returnStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
 		a.Logger.Error("failed to read request body", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	fullURL := string(body)
 
-	id, err := a.ShortenerService.Shorten(fullURL)
+	id, err := a.ShortenerService.Shorten(r.Context(), fullURL)
 
 	if err != nil {
 		if errors.Is(err, service.ErrURLExists) {
-			successStatus = http.StatusConflict
+			returnStatus = http.StatusConflict
 		} else {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 	}
 
-	w.WriteHeader(successStatus)
+	w.WriteHeader(returnStatus)
 
 	resolveURL, err := url.JoinPath(config.ResolveAddress, id)
 	if err != nil {
@@ -55,12 +55,12 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
-	successStatus := http.StatusCreated
+	returnStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
 		a.Logger.Error("failed to read request body", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -71,11 +71,11 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := a.ShortenerService.Shorten(req.URL)
+	id, err := a.ShortenerService.Shorten(r.Context(), req.URL)
 
 	if err != nil {
 		if errors.Is(err, service.ErrURLExists) {
-			successStatus = http.StatusConflict
+			returnStatus = http.StatusConflict
 		} else {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
@@ -96,7 +96,7 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	jsonBytes, _ := resp.MarshalJSON()
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(successStatus)
+	w.WriteHeader(returnStatus)
 	w.Write(jsonBytes)
 }
 
@@ -104,7 +104,7 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		a.Logger.Error("failed to read request body", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	err = a.ShortenerService.BatchShorten(records)
+	err = a.ShortenerService.BatchShorten(r.Context(), records)
 	if err != nil {
 		a.Logger.Error("error in batch saving", zap.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -149,7 +149,13 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 		respItems = append(respItems, response)
 	}
 
-	jsonBytes, _ := respItems.MarshalJSON()
+	jsonBytes, err := respItems.MarshalJSON()
+	if err != nil {
+		a.Logger.Error("error in resonse serializing", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonBytes)
@@ -157,7 +163,7 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
-	url, err := a.ShortenerService.GetURL(id)
+	url, err := a.ShortenerService.GetURL(r.Context(), id)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -167,7 +173,7 @@ func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
-	if pinged := a.ShortenerService.Ping(); !pinged {
+	if pinged := a.ShortenerService.Ping(r.Context()); !pinged {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"time"
@@ -47,6 +48,7 @@ func (service *ShortenerService) generateRandomID(letters string, size int) stri
 }
 
 func (service *ShortenerService) Shorten(
+	ctx context.Context,
 	url string,
 ) (string, error) {
 	for i := service.minLength; i < service.maxLength; i++ {
@@ -55,6 +57,7 @@ func (service *ShortenerService) Shorten(
 			i,
 		)
 		short, err := service.repo.Save(
+			ctx,
 			id,
 			url,
 		)
@@ -71,13 +74,14 @@ func (service *ShortenerService) Shorten(
 }
 
 func (service *ShortenerService) BatchShorten(
+	ctx context.Context,
 	records []entities.URLRecord,
 ) error {
-	return service.repo.BatchSave(records)
+	return service.repo.BatchSave(ctx, records)
 }
 
-func (service *ShortenerService) GetURL(id string) (string, error) {
-	url, exists := service.repo.Get(id)
+func (service *ShortenerService) GetURL(ctx context.Context, id string) (string, error) {
+	url, exists := service.repo.Get(ctx, id)
 	if !exists {
 		return "", ErrIDDoesNotExists
 	}
@@ -85,6 +89,6 @@ func (service *ShortenerService) GetURL(id string) (string, error) {
 	return url, nil
 }
 
-func (service *ShortenerService) Ping() bool {
-	return service.repo.Ping()
+func (service *ShortenerService) Ping(ctx context.Context) bool {
+	return service.repo.Ping(ctx)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func chooseStorage() repository.URLRepository {
+func chooseStorage(logger *zap.Logger) repository.URLRepository {
 	if config.DatabaseInfo != "" {
 		repo, err := repository.NewDBRepository(config.DatabaseInfo)
 
@@ -24,24 +25,27 @@ func chooseStorage() repository.URLRepository {
 			return repo
 		}
 
-		fmt.Fprintf(os.Stderr, "failed to create db repo: %v\n", err)
+		logger.Error("failed to create db repo", zap.Error(err))
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if config.FileStoragePath != "" {
-		repo, err := repository.NewFileRepository(config.FileStoragePath)
+		repo, err := repository.NewFileRepository(ctx, config.FileStoragePath)
 
 		if err == nil {
 			return repo
 		}
 
-		fmt.Fprintf(os.Stderr, "failed to create file repo: %v\n", err)
+		logger.Error("failed to create file repo", zap.Error(err))
 	}
 
 	return repository.NewMemoryRepository()
 }
 
 func main() {
-	config.ParseFlags()
+	config.Load()
 	router := chi.NewRouter()
 
 	logger, err := zap.NewProduction()
@@ -50,7 +54,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	repo := chooseStorage()
+	repo := chooseStorage(logger)
 
 	shortenerService := service.NewShortenerService(
 		repo,

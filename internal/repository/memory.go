@@ -1,6 +1,10 @@
 package repository
 
-import "github.com/Oleg2210/goshortener/internal/entities"
+import (
+	"context"
+
+	"github.com/Oleg2210/goshortener/internal/entities"
+)
 
 type MemoryRepository struct {
 	data map[string]string
@@ -14,9 +18,14 @@ func NewMemoryRepository() *MemoryRepository {
 	return repo
 }
 
-func (repo *MemoryRepository) Save(id string, url string) (string, error) {
-	_, exists := repo.data[id]
-	if exists {
+func (repo *MemoryRepository) Save(ctx context.Context, id string, url string) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
+
+	if _, exists := repo.data[id]; exists {
 		return "", ErrAlreadyExists
 	}
 
@@ -24,9 +33,13 @@ func (repo *MemoryRepository) Save(id string, url string) (string, error) {
 	return id, nil
 }
 
-func (repo *MemoryRepository) BatchSave(
-	records []entities.URLRecord,
-) error {
+func (repo *MemoryRepository) BatchSave(ctx context.Context, records []entities.URLRecord) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	for _, r := range records {
 		if _, exists := repo.data[r.Short]; exists {
 			return ErrAlreadyExists
@@ -40,11 +53,23 @@ func (repo *MemoryRepository) BatchSave(
 	return nil
 }
 
-func (repo *MemoryRepository) Get(id string) (string, bool) {
+func (repo *MemoryRepository) Get(ctx context.Context, id string) (string, bool) {
+	select {
+	case <-ctx.Done():
+		return "", false
+	default:
+	}
+
 	url, exists := repo.data[id]
 	return url, exists
 }
 
-func (repo *MemoryRepository) Ping() bool {
+func (repo *MemoryRepository) Ping(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	default:
+	}
+
 	return false
 }
