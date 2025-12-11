@@ -2,37 +2,53 @@ package config
 
 import (
 	"flag"
-	"os"
+	"log"
+
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 // минимальная длина id
 const MinLength = 5
 
-// максимальная длина  id
+// максимальная длина id
 const MaxLength = 10
 
 var (
 	PortAddres      string
 	ResolveAddress  string
 	FileStoragePath string
+	DatabaseInfo    string
 )
 
-func ParseFlags() {
-	flag.StringVar(&PortAddres, "a", ":8080", "server adress with port")
-	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "response URL")
-	flag.StringVar(&FileStoragePath, "f", "urls-storage.json", "path to uls storage")
+type envConfig struct {
+	PortAddres      string `env:"SERVER_ADDRESS"`
+	ResolveAddress  string `env:"BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseInfo    string `env:"DATABASE_DSN"`
+}
 
+func Load() {
+	flag.StringVar(&PortAddres, "a", ":8080", "server address")
+	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "base URL")
+	flag.StringVar(&FileStoragePath, "f", "urls-storage.json", "file storage")
+	flag.StringVar(&DatabaseInfo, "d", "", "database dsn")
 	flag.Parse()
 
-	if envPortAddres, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
-		PortAddres = envPortAddres
+	var e envConfig
+	if err := cleanenv.ReadEnv(&e); err != nil {
+		log.Fatalf("config error: %v", err)
 	}
 
-	if envResolveAddress, ok := os.LookupEnv("BASE_URL"); ok {
-		ResolveAddress = envResolveAddress
+	if e.PortAddres != "" {
+		PortAddres = e.PortAddres
 	}
-
-	if fileStorage, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		FileStoragePath = fileStorage
+	if e.ResolveAddress != "" {
+		ResolveAddress = e.ResolveAddress
+	}
+	if e.FileStoragePath != "" {
+		FileStoragePath = e.FileStoragePath
+	}
+	if e.DatabaseInfo != "" {
+		DatabaseInfo = e.DatabaseInfo
 	}
 }

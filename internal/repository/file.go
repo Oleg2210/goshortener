@@ -1,9 +1,12 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"sync"
+
+	"github.com/Oleg2210/goshortener/internal/entities"
 )
 
 type record struct {
@@ -18,13 +21,13 @@ type FileRepository struct {
 	mu         sync.Mutex
 }
 
-func NewFileRepository(fileStoragePath string) (*FileRepository, error) {
+func NewFileRepository(ctx context.Context, fileStoragePath string) (*FileRepository, error) {
 	repo := &FileRepository{
 		memoryRepo: NewMemoryRepository(),
 		path:       fileStoragePath,
 	}
 
-	err := repo.loadDataFromFile()
+	err := repo.loadDataFromFile(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +35,7 @@ func NewFileRepository(fileStoragePath string) (*FileRepository, error) {
 	return repo, nil
 }
 
-func (repo *FileRepository) loadDataFromFile() error {
+func (repo *FileRepository) loadDataFromFile(ctx context.Context) error {
 	bytes, err := os.ReadFile(repo.path)
 
 	if err != nil {
@@ -48,7 +51,7 @@ func (repo *FileRepository) loadDataFromFile() error {
 	}
 
 	for _, r := range records {
-		repo.memoryRepo.Save(r.ShortURL, r.OriginalURL)
+		repo.memoryRepo.Save(ctx, r.ShortURL, r.OriginalURL)
 	}
 	return nil
 }
@@ -70,25 +73,62 @@ func (repo *FileRepository) saveToFile() error {
 
 	return os.WriteFile(repo.path, bytes, 0644)
 }
+func (repo *FileRepository) Save(ctx context.Context, id string, url string) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
 
-func (repo *FileRepository) Save(id string, url string) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
-	_, exists := repo.memoryRepo.Get(id)
+	_, exists := repo.memoryRepo.Get(ctx, id)
 	if exists {
-		return ErrAlreadyExists
+		return "", ErrAlreadyExists
 	}
 
-	err := repo.memoryRepo.Save(id, url)
+	id, err := repo.memoryRepo.Save(ctx, id, url)
 	if err != nil {
+		return id, err
+	}
+
+	return id, repo.saveToFile()
+}
+
+func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.URLRecord) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
+	if err := repo.memoryRepo.BatchSave(ctx, records); err != nil {
 		return err
 	}
 
-	repo.saveToFile()
-	return nil
+	return repo.saveToFile()
 }
 
-func (repo *FileRepository) Get(id string) (string, bool) {
-	return repo.memoryRepo.Get(id)
+func (repo *FileRepository) Get(ctx context.Context, id string) (string, bool) {
+	select {
+	case <-ctx.Done():
+		return "", false
+	default:
+	}
+
+	return repo.memoryRepo.Get(ctx, id)
+}
+
+func (repo *FileRepository) Ping(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	default:
+	}
+
+	return true
 }

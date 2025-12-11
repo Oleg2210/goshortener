@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,8 +17,35 @@ import (
 	"go.uber.org/zap"
 )
 
+func chooseStorage(logger *zap.Logger) repository.URLRepository {
+	if config.DatabaseInfo != "" {
+		repo, err := repository.NewDBRepository(config.DatabaseInfo)
+
+		if err == nil {
+			return repo
+		}
+
+		logger.Error("failed to create db repo", zap.Error(err))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if config.FileStoragePath != "" {
+		repo, err := repository.NewFileRepository(ctx, config.FileStoragePath)
+
+		if err == nil {
+			return repo
+		}
+
+		logger.Error("failed to create file repo", zap.Error(err))
+	}
+
+	return repository.NewMemoryRepository()
+}
+
 func main() {
-	config.ParseFlags()
+	config.Load()
 	router := chi.NewRouter()
 
 	logger, err := zap.NewProduction()
@@ -26,16 +54,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var repo repository.URLRepository
-	var repoErr error
-
-	if config.FileStoragePath != "" {
-		repo, repoErr = repository.NewFileRepository(config.FileStoragePath)
-	}
-
-	if config.FileStoragePath == "" || repoErr != nil {
-		repo = repository.NewMemoryRepository()
-	}
+	repo := chooseStorage(logger)
 
 	shortenerService := service.NewShortenerService(
 		repo,
@@ -53,6 +72,8 @@ func main() {
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
+	router.Post("/api/shorten/batch", app.HandlePostBatchJSON)
+	router.Get("/ping", app.HandlePing)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,

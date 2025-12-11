@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/Oleg2210/goshortener/internal/config"
+	"github.com/Oleg2210/goshortener/internal/entities"
 	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
 	"go.uber.org/zap"
@@ -18,24 +20,29 @@ type App struct {
 }
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
+	returnStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
 		a.Logger.Error("failed to read request body", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	fullURL := string(body)
 
-	id, err := a.ShortenerService.Shorten(fullURL)
+	id, err := a.ShortenerService.Shorten(r.Context(), fullURL)
 
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+		if errors.Is(err, service.ErrURLExists) {
+			returnStatus = http.StatusConflict
+		} else {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(returnStatus)
 
 	resolveURL, err := url.JoinPath(config.ResolveAddress, id)
 	if err != nil {
@@ -48,11 +55,12 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
+	returnStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
 		a.Logger.Error("failed to read request body", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -63,11 +71,15 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := a.ShortenerService.Shorten(req.URL)
+	id, err := a.ShortenerService.Shorten(r.Context(), req.URL)
 
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+		if errors.Is(err, service.ErrURLExists) {
+			returnStatus = http.StatusConflict
+		} else {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
 	}
 
 	resultURL, err := url.JoinPath(config.ResolveAddress, id)
@@ -84,17 +96,87 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	jsonBytes, _ := resp.MarshalJSON()
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(returnStatus)
+	w.Write(jsonBytes)
+}
+
+func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		a.Logger.Error("failed to read request body", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	var reqItems serializers.BatchRequestItemSlice
+	if err := reqItems.UnmarshalJSON(body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	records := make([]entities.URLRecord, 0, len(reqItems))
+	for _, r := range reqItems {
+		records = append(
+			records,
+			entities.URLRecord{
+				OriginalURL: r.OriginalURL,
+				Short:       r.CorrelationID,
+			},
+		)
+	}
+
+	err = a.ShortenerService.BatchShorten(r.Context(), records)
+	if err != nil {
+		a.Logger.Error("error in batch saving", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	var respItems serializers.BatchResponseItemSlice
+	for _, r := range records {
+		resultURL, err := url.JoinPath(config.ResolveAddress, r.Short)
+
+		if err != nil {
+			a.Logger.Error("error while url join", zap.Error(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		response := serializers.BatchResponseItem{
+			CorrelationID: r.Short,
+			ShortURL:      resultURL,
+		}
+		respItems = append(respItems, response)
+	}
+
+	jsonBytes, err := respItems.MarshalJSON()
+	if err != nil {
+		a.Logger.Error("error in resonse serializing", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonBytes)
 }
 
 func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
-	url, err := a.ShortenerService.GetURL(id)
+	url, err := a.ShortenerService.GetURL(r.Context(), id)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
+	if pinged := a.ShortenerService.Ping(r.Context()); !pinged {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

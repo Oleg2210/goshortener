@@ -1,16 +1,20 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"time"
 
+	"github.com/Oleg2210/goshortener/internal/entities"
 	"github.com/Oleg2210/goshortener/internal/repository"
 )
 
 var ErrOutOfCombinations = errors.New("possible combinations are running out")
 
 var ErrIDDoesNotExists = errors.New("such id does not exist")
+
+var ErrURLExists = errors.New("such url already exists")
 
 type ShortenerService struct {
 	repo      repository.URLRepository
@@ -44,6 +48,7 @@ func (service *ShortenerService) generateRandomID(letters string, size int) stri
 }
 
 func (service *ShortenerService) Shorten(
+	ctx context.Context,
 	url string,
 ) (string, error) {
 	for i := service.minLength; i < service.maxLength; i++ {
@@ -51,12 +56,16 @@ func (service *ShortenerService) Shorten(
 			service.letters,
 			i,
 		)
-		err := service.repo.Save(
+		short, err := service.repo.Save(
+			ctx,
 			id,
 			url,
 		)
 
 		if err == nil {
+			if short != id {
+				return short, ErrURLExists
+			}
 			return id, nil
 		}
 	}
@@ -64,11 +73,22 @@ func (service *ShortenerService) Shorten(
 	return "", ErrOutOfCombinations
 }
 
-func (service *ShortenerService) GetURL(id string) (string, error) {
-	url, exists := service.repo.Get(id)
+func (service *ShortenerService) BatchShorten(
+	ctx context.Context,
+	records []entities.URLRecord,
+) error {
+	return service.repo.BatchSave(ctx, records)
+}
+
+func (service *ShortenerService) GetURL(ctx context.Context, id string) (string, error) {
+	url, exists := service.repo.Get(ctx, id)
 	if !exists {
 		return "", ErrIDDoesNotExists
 	}
 
 	return url, nil
+}
+
+func (service *ShortenerService) Ping(ctx context.Context) bool {
+	return service.repo.Ping(ctx)
 }
