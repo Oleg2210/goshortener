@@ -81,6 +81,7 @@ func (service *ShortenerService) Shorten(
 			id,
 			url,
 			userID,
+			false,
 		)
 
 		if err == nil {
@@ -102,10 +103,10 @@ func (service *ShortenerService) BatchShorten(
 	return service.repo.BatchSave(ctx, records, userID)
 }
 
-func (service *ShortenerService) GetURL(ctx context.Context, id string) (string, error) {
+func (service *ShortenerService) GetURL(ctx context.Context, id string) (entities.URLRecord, error) {
 	url, exists := service.repo.Get(ctx, id)
 	if !exists {
-		return "", ErrIDDoesNotExists
+		return entities.URLRecord{}, ErrIDDoesNotExists
 	}
 
 	return url, nil
@@ -123,4 +124,8 @@ func (service *ShortenerService) GetUserShortens(ctx context.Context) ([]entitie
 	}
 
 	return service.repo.GetUserShortens(ctx, userID)
+}
+
+func (service *ShortenerService) MarkDelete(ctx context.Context, short string, userID string) error {
+	return service.repo.MarkDelete(ctx, short, userID)
 }

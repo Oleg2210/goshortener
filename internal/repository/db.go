@@ -56,16 +56,17 @@ func (repo *DBRepository) Ping(ctx context.Context) bool {
 	return err == nil
 }
 
-func (repo *DBRepository) Save(ctx context.Context, id string, url string, userID string) (string, error) {
+func (repo *DBRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	var returnedShort string
 	err := repo.DB.QueryRowContext(
 		ctx,
-		`INSERT INTO urls(short, original, user_id) VALUES ($1, $2, $3)
+		`INSERT INTO urls(short, original, user_id, is_deleted) VALUES ($1, $2, $3, $4)
 		ON CONFLICT(original) DO UPDATE 
 		SET original = excluded.original RETURNING short`,
 		id,
 		url,
 		userID,
+		isDeleted,
 	).Scan(&returnedShort)
 
 	if err != nil {
@@ -74,17 +75,17 @@ func (repo *DBRepository) Save(ctx context.Context, id string, url string, userI
 	return returnedShort, nil
 }
 
-func (repo *DBRepository) Get(ctx context.Context, id string) (string, bool) {
-	var fullURL string
+func (repo *DBRepository) Get(ctx context.Context, id string) (entities.URLRecord, bool) {
+	var url entities.URLRecord
 
-	row := repo.DB.QueryRowContext(ctx, "SELECT original FROM urls WHERE short=$1", id)
-	err := row.Scan(&fullURL)
+	row := repo.DB.QueryRowContext(ctx, "SELECT original, short, is_deleted FROM urls WHERE short=$1", id)
+	err := row.Scan(&url.OriginalURL, &url.Short, &url.IsDeleted)
 
 	if err != nil {
-		return "", false
+		return entities.URLRecord{}, false
 	}
 
-	return fullURL, true
+	return url, true
 }
 
 func (repo *DBRepository) BatchSave(ctx context.Context, records []entities.URLRecord, userID string) error {
@@ -128,4 +129,17 @@ func (repo *DBRepository) GetUserShortens(ctx context.Context, userID string) ([
 	}
 
 	return result, nil
+}
+
+func (repo *DBRepository) MarkDelete(ctx context.Context, short string, userID string) error {
+	_, err := repo.DB.ExecContext(
+		ctx,
+		`UPDATE urls
+        SET is_deleted = TRUE
+        WHERE short = $1 AND user_id = $2`,
+		short,
+		userID,
+	)
+
+	return err
 }

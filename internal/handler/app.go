@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 type App struct {
 	ShortenerService *service.ShortenerService
 	Logger           *zap.Logger
+	Deleter          *Deleter
 }
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +170,13 @@ func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Location", url)
+
+	if url.IsDeleted {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+
+	w.Header().Set("Location", url.OriginalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
@@ -222,4 +230,21 @@ func (a *App) HandleUserUrls(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonBytes)
+}
+
+func (a *App) HandleMarkDelete(w http.ResponseWriter, r *http.Request) {
+	var req serializers.DeleteRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	userID := r.Context().Value(config.ContextUserID).(string)
+
+	for _, short := range req {
+		a.Deleter.queue <- DeleteTask{UserID: userID, Short: short}
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }

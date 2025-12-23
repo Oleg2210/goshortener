@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func chooseStorage(logger *zap.Logger) repository.URLRepository {
+func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLRepository {
 	if config.DatabaseInfo != "" {
 		repo, err := repository.NewDBRepository(config.DatabaseInfo)
 
@@ -28,9 +28,6 @@ func chooseStorage(logger *zap.Logger) repository.URLRepository {
 
 		logger.Error("failed to create db repo", zap.Error(err))
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	if config.FileStoragePath != "" {
 		repo, err := repository.NewFileRepository(ctx, config.FileStoragePath)
@@ -55,7 +52,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	repo := chooseStorage(logger)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	repo := chooseStorage(ctx, logger)
 
 	shortenerService := service.NewShortenerService(
 		repo,
@@ -64,9 +64,12 @@ func main() {
 		config.ContextUserID,
 	)
 
+	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
+
 	app := handler.App{
 		ShortenerService: shortenerService,
 		Logger:           logger,
+		Deleter:          deleter,
 	}
 
 	router.Use(logging.LoggingMiddleware(logger))
@@ -78,6 +81,7 @@ func main() {
 	router.Post("/api/shorten/batch", app.HandlePostBatchJSON)
 	router.Get("/ping", app.HandlePing)
 	router.Get("/api/user/urls", app.HandleUserUrls)
+	router.Delete("/api/user/urls", app.HandleMarkDelete)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,

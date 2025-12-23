@@ -42,3 +42,6 @@ type AllShortenResponseItem struct {
 
 //easyjson:json
 type AllShortenResponseItemSlice []AllShortenResponseItem
+
+//easyjson:json
+type DeleteRequest []string

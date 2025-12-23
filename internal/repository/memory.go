@@ -9,6 +9,7 @@ import (
 type MemoryRecord struct {
 	OriginalURL string
 	UserID      string
+	IsDeleted   bool
 }
 
 type MemoryRepository struct {
@@ -25,7 +26,7 @@ func NewMemoryRepository() *MemoryRepository {
 	return repo
 }
 
-func (repo *MemoryRepository) Save(ctx context.Context, id string, url string, userID string) (string, error) {
+func (repo *MemoryRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
@@ -36,7 +37,7 @@ func (repo *MemoryRepository) Save(ctx context.Context, id string, url string, u
 		return "", ErrAlreadyExists
 	}
 
-	repo.data[id] = MemoryRecord{OriginalURL: url, UserID: userID}
+	repo.data[id] = MemoryRecord{OriginalURL: url, UserID: userID, IsDeleted: isDeleted}
 	if repo.userData[userID] == nil {
 		repo.userData[userID] = make(map[string]string)
 	}
@@ -58,7 +59,7 @@ func (repo *MemoryRepository) BatchSave(ctx context.Context, records []entities.
 	}
 
 	for _, r := range records {
-		repo.data[r.Short] = MemoryRecord{OriginalURL: r.OriginalURL, UserID: userID}
+		repo.data[r.Short] = MemoryRecord{OriginalURL: r.OriginalURL, UserID: userID, IsDeleted: false}
 
 		if repo.userData[userID] == nil {
 			repo.userData[userID] = make(map[string]string)
@@ -69,15 +70,15 @@ func (repo *MemoryRepository) BatchSave(ctx context.Context, records []entities.
 	return nil
 }
 
-func (repo *MemoryRepository) Get(ctx context.Context, id string) (string, bool) {
+func (repo *MemoryRepository) Get(ctx context.Context, id string) (entities.URLRecord, bool) {
 	select {
 	case <-ctx.Done():
-		return "", false
+		return entities.URLRecord{}, false
 	default:
 	}
 
 	url, exists := repo.data[id]
-	return url.OriginalURL, exists
+	return entities.URLRecord{OriginalURL: url.OriginalURL, Short: id, IsDeleted: url.IsDeleted}, exists
 }
 
 func (repo *MemoryRepository) Ping(ctx context.Context) bool {
@@ -108,4 +109,24 @@ func (repo *MemoryRepository) GetUserShortens(ctx context.Context, userID string
 	}
 
 	return shortens, nil
+}
+
+func (repo *MemoryRepository) MarkDelete(ctx context.Context, short string, userID string) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
+
+	url, ok := repo.data[short]
+
+	if !ok {
+		return nil
+	}
+
+	if url.UserID == userID {
+		repo.data[short] = MemoryRecord{OriginalURL: url.OriginalURL, UserID: userID, IsDeleted: true}
+	}
+
+	return nil
 }

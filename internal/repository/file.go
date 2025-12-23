@@ -14,6 +14,7 @@ type record struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 	UserID      string `json:"user_id"`
+	IsDeleted   bool   `json:"is_deleted"`
 }
 
 type FileRepository struct {
@@ -52,7 +53,7 @@ func (repo *FileRepository) loadDataFromFile(ctx context.Context) error {
 	}
 
 	for _, r := range records {
-		repo.memoryRepo.Save(ctx, r.ShortURL, r.OriginalURL, r.UserID)
+		repo.memoryRepo.Save(ctx, r.ShortURL, r.OriginalURL, r.UserID, r.IsDeleted)
 	}
 	return nil
 }
@@ -65,6 +66,7 @@ func (repo *FileRepository) saveToFile() error {
 			ShortURL:    short,
 			OriginalURL: url.OriginalURL,
 			UserID:      url.UserID,
+			IsDeleted:   url.IsDeleted,
 		})
 	}
 
@@ -75,7 +77,7 @@ func (repo *FileRepository) saveToFile() error {
 
 	return os.WriteFile(repo.path, bytes, 0644)
 }
-func (repo *FileRepository) Save(ctx context.Context, id string, url string, userID string) (string, error) {
+func (repo *FileRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
@@ -90,7 +92,7 @@ func (repo *FileRepository) Save(ctx context.Context, id string, url string, use
 		return "", ErrAlreadyExists
 	}
 
-	id, err := repo.memoryRepo.Save(ctx, id, url, userID)
+	id, err := repo.memoryRepo.Save(ctx, id, url, userID, isDeleted)
 	if err != nil {
 		return id, err
 	}
@@ -115,10 +117,10 @@ func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.UR
 	return repo.saveToFile()
 }
 
-func (repo *FileRepository) Get(ctx context.Context, id string) (string, bool) {
+func (repo *FileRepository) Get(ctx context.Context, id string) (entities.URLRecord, bool) {
 	select {
 	case <-ctx.Done():
-		return "", false
+		return entities.URLRecord{}, false
 	default:
 	}
 
@@ -143,4 +145,20 @@ func (repo *FileRepository) GetUserShortens(ctx context.Context, userID string) 
 	}
 
 	return repo.memoryRepo.GetUserShortens(ctx, userID)
+}
+
+func (repo *FileRepository) MarkDelete(ctx context.Context, short string, userID string) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
+
+	err := repo.memoryRepo.MarkDelete(ctx, short, userID)
+
+	if err != nil {
+		return err
+	}
+
+	return repo.saveToFile()
 }
