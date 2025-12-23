@@ -32,6 +32,7 @@ func TestReplacePOST(t *testing.T) {
 			repo,
 			config.MinLength,
 			config.MaxLength,
+			config.ContextUserID,
 		)
 		app := App{
 			ShortenerService: shortenerService,
@@ -68,6 +69,7 @@ func TestHandleGet(t *testing.T) {
 			repo,
 			config.MinLength,
 			config.MaxLength,
+			config.ContextUserID,
 		)
 		app := App{
 			ShortenerService: shortenerService,

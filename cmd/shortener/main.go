@@ -12,6 +12,7 @@ import (
 	"github.com/Oleg2210/goshortener/internal/repository"
 	"github.com/Oleg2210/goshortener/internal/service"
 	compres "github.com/Oleg2210/goshortener/pkg/middleware/compress"
+	"github.com/Oleg2210/goshortener/pkg/middleware/cookies"
 	"github.com/Oleg2210/goshortener/pkg/middleware/logging"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -60,6 +61,7 @@ func main() {
 		repo,
 		config.MinLength,
 		config.MaxLength,
+		config.ContextUserID,
 	)
 
 	app := handler.App{
@@ -68,12 +70,14 @@ func main() {
 	}
 
 	router.Use(logging.LoggingMiddleware(logger))
+	router.Use(cookies.AuthMiddleware([]byte(config.AuthSecret), config.CookieUserID, config.ContextUserID))
 	router.Use(compres.GzipMiddleware)
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
 	router.Post("/api/shorten/batch", app.HandlePostBatchJSON)
 	router.Get("/ping", app.HandlePing)
+	router.Get("/api/user/urls", app.HandleUserUrls)
 
 	server := &http.Server{
 		Addr:         config.PortAddres,

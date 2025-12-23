@@ -180,3 +180,46 @@ func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (a *App) HandleUserUrls(w http.ResponseWriter, r *http.Request) {
+	records, err := a.ShortenerService.GetUserShortens(r.Context())
+
+	if err != nil {
+		a.Logger.Error("error while GetUserShortens", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if len(records) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	var respItems serializers.AllShortenResponseItemSlice
+	for _, r := range records {
+		resultURL, err := url.JoinPath(config.ResolveAddress, r.Short)
+
+		if err != nil {
+			a.Logger.Error("error while url join", zap.Error(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		response := serializers.AllShortenResponseItem{
+			OriginalURL: r.OriginalURL,
+			ShortURL:    resultURL,
+		}
+		respItems = append(respItems, response)
+	}
+
+	jsonBytes, err := respItems.MarshalJSON()
+	if err != nil {
+		a.Logger.Error("error in resonse serializing", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
