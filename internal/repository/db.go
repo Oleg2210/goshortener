@@ -56,15 +56,16 @@ func (repo *DBRepository) Ping(ctx context.Context) bool {
 	return err == nil
 }
 
-func (repo *DBRepository) Save(ctx context.Context, id string, url string) (string, error) {
+func (repo *DBRepository) Save(ctx context.Context, id string, url string, userID string) (string, error) {
 	var returnedShort string
 	err := repo.DB.QueryRowContext(
 		ctx,
-		`INSERT INTO urls(short, original) VALUES ($1, $2)
+		`INSERT INTO urls(short, original, user_id) VALUES ($1, $2, $3)
 		ON CONFLICT(original) DO UPDATE 
 		SET original = excluded.original RETURNING short`,
 		id,
 		url,
+		userID,
 	).Scan(&returnedShort)
 
 	if err != nil {
@@ -86,14 +87,14 @@ func (repo *DBRepository) Get(ctx context.Context, id string) (string, bool) {
 	return fullURL, true
 }
 
-func (repo *DBRepository) BatchSave(ctx context.Context, records []entities.URLRecord) error {
+func (repo *DBRepository) BatchSave(ctx context.Context, records []entities.URLRecord, userID string) error {
 	tx, err := repo.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	for _, r := range records {
-		_, err := tx.ExecContext(ctx, "INSERT INTO urls(short, original) VALUES ($1, $2)", r.Short, r.OriginalURL)
+		_, err := tx.ExecContext(ctx, "INSERT INTO urls(short, original, user_id) VALUES ($1, $2, $3)", r.Short, r.OriginalURL, userID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -101,4 +102,30 @@ func (repo *DBRepository) BatchSave(ctx context.Context, records []entities.URLR
 	}
 
 	return tx.Commit()
+}
+
+func (repo *DBRepository) GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error) {
+	rows, err := repo.DB.QueryContext(ctx, "SELECT short, original FROM urls WHERE user_id=$1", userID)
+
+	if err != nil {
+		return []entities.URLRecord{}, err
+	}
+
+	defer rows.Close()
+
+	var result []entities.URLRecord
+
+	for rows.Next() {
+		var r entities.URLRecord
+		if err := rows.Scan(&r.Short, &r.OriginalURL); err != nil {
+			return []entities.URLRecord{}, err
+		}
+		result = append(result, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return []entities.URLRecord{}, err
+	}
+
+	return result, nil
 }

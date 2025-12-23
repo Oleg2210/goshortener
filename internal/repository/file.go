@@ -13,6 +13,7 @@ type record struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	UserID      string `json:"user_id"`
 }
 
 type FileRepository struct {
@@ -51,18 +52,19 @@ func (repo *FileRepository) loadDataFromFile(ctx context.Context) error {
 	}
 
 	for _, r := range records {
-		repo.memoryRepo.Save(ctx, r.ShortURL, r.OriginalURL)
+		repo.memoryRepo.Save(ctx, r.ShortURL, r.OriginalURL, r.UserID)
 	}
 	return nil
 }
 
 func (repo *FileRepository) saveToFile() error {
 	records := make([]record, 0, len(repo.memoryRepo.data))
-	for short, original := range repo.memoryRepo.data {
+	for short, url := range repo.memoryRepo.data {
 		records = append(records, record{
 			UUID:        short,
 			ShortURL:    short,
-			OriginalURL: original,
+			OriginalURL: url.OriginalURL,
+			UserID:      url.UserID,
 		})
 	}
 
@@ -73,7 +75,7 @@ func (repo *FileRepository) saveToFile() error {
 
 	return os.WriteFile(repo.path, bytes, 0644)
 }
-func (repo *FileRepository) Save(ctx context.Context, id string, url string) (string, error) {
+func (repo *FileRepository) Save(ctx context.Context, id string, url string, userID string) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
@@ -88,7 +90,7 @@ func (repo *FileRepository) Save(ctx context.Context, id string, url string) (st
 		return "", ErrAlreadyExists
 	}
 
-	id, err := repo.memoryRepo.Save(ctx, id, url)
+	id, err := repo.memoryRepo.Save(ctx, id, url, userID)
 	if err != nil {
 		return id, err
 	}
@@ -96,7 +98,7 @@ func (repo *FileRepository) Save(ctx context.Context, id string, url string) (st
 	return id, repo.saveToFile()
 }
 
-func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.URLRecord) error {
+func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.URLRecord, userID string) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -106,7 +108,7 @@ func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.UR
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
-	if err := repo.memoryRepo.BatchSave(ctx, records); err != nil {
+	if err := repo.memoryRepo.BatchSave(ctx, records, userID); err != nil {
 		return err
 	}
 
@@ -131,4 +133,14 @@ func (repo *FileRepository) Ping(ctx context.Context) bool {
 	}
 
 	return true
+}
+
+func (repo *FileRepository) GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error) {
+	select {
+	case <-ctx.Done():
+		return []entities.URLRecord{}, nil
+	default:
+	}
+
+	return repo.memoryRepo.GetUserShortens(ctx, userID)
 }
