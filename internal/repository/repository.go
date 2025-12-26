@@ -15,5 +15,5 @@ type URLRepository interface {
 	Get(ctx context.Context, id string) (entities.URLRecord, bool)
 	Ping(ctx context.Context) bool
 	GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error)
-	MarkDelete(ctx context.Context, short string, userID string) error
+	MarkDelete(ctx context.Context, short []string, userID string) error
 }

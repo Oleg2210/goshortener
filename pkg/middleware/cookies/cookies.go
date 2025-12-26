@@ -11,6 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
+const cookieUserID = "UserID"
+
+type contextKey string
+
+const contextUserID contextKey = cookieUserID
+
 func sign(value string, secret []byte) string {
 	mac := hmac.New(sha256.New, secret)
 	mac.Write([]byte(value))
@@ -22,23 +28,23 @@ func verify(value, signature string, secret []byte) bool {
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
-func AuthMiddleware(secret []byte, cookieName string, cookieContextName any) func(http.Handler) http.Handler {
+func AuthMiddleware(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie(cookieName)
+			cookie, err := r.Cookie(cookieUserID)
 			if err != nil {
 				// cookie нет → создаём новую
 				userID := uuid.NewString()
 				sig := sign(userID, secret)
 
 				http.SetCookie(w, &http.Cookie{
-					Name:     cookieName,
+					Name:     cookieUserID,
 					Value:    userID + "|" + sig,
 					Path:     "/",
 					HttpOnly: true,
 				})
 
-				ctx := context.WithValue(r.Context(), cookieContextName, userID)
+				ctx := context.WithValue(r.Context(), contextUserID, userID)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -60,20 +66,25 @@ func AuthMiddleware(secret []byte, cookieName string, cookieContextName any) fun
 				newSig := sign(newUserID, secret)
 
 				http.SetCookie(w, &http.Cookie{
-					Name:     cookieName,
+					Name:     cookieUserID,
 					Value:    newUserID + "|" + newSig,
 					Path:     "/",
 					HttpOnly: true,
 				})
 
-				ctx := context.WithValue(r.Context(), cookieContextName, newUserID)
+				ctx := context.WithValue(r.Context(), contextUserID, newUserID)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
 			// всё ок → кладём userID в context
-			ctx := context.WithValue(r.Context(), cookieContextName, userID)
+			ctx := context.WithValue(r.Context(), contextUserID, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func GetUserIDFromContext(ctx context.Context) (string, bool) {
+	id, ok := ctx.Value(contextUserID).(string)
+	return id, ok
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/Oleg2210/goshortener/internal/entities"
 	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
+	"github.com/Oleg2210/goshortener/pkg/middleware/cookies"
 	"go.uber.org/zap"
 )
 
@@ -33,7 +34,9 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 
 	fullURL := string(body)
 
-	id, err := a.ShortenerService.Shorten(r.Context(), fullURL)
+	userID, _ := cookies.GetUserIDFromContext(r.Context())
+
+	id, err := a.ShortenerService.Shorten(r.Context(), fullURL, userID)
 
 	if err != nil {
 		if errors.Is(err, service.ErrURLExists) {
@@ -73,7 +76,8 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := a.ShortenerService.Shorten(r.Context(), req.URL)
+	userID, _ := cookies.GetUserIDFromContext(r.Context())
+	id, err := a.ShortenerService.Shorten(r.Context(), req.URL, userID)
 
 	if err != nil {
 		if errors.Is(err, service.ErrURLExists) {
@@ -127,7 +131,9 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	err = a.ShortenerService.BatchShorten(r.Context(), records)
+	userID, _ := cookies.GetUserIDFromContext(r.Context())
+
+	err = a.ShortenerService.BatchShorten(r.Context(), records, userID)
 	if err != nil {
 		a.Logger.Error("error in batch saving", zap.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -189,8 +195,9 @@ func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (a *App) HandleUserUrls(w http.ResponseWriter, r *http.Request) {
-	records, err := a.ShortenerService.GetUserShortens(r.Context())
+func (a *App) HandleGetAllUserUrls(w http.ResponseWriter, r *http.Request) {
+	userID, _ := cookies.GetUserIDFromContext(r.Context())
+	records, err := a.ShortenerService.GetUserShortens(r.Context(), userID)
 
 	if err != nil {
 		a.Logger.Error("error while GetUserShortens", zap.Error(err))
@@ -240,11 +247,9 @@ func (a *App) HandleMarkDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value(config.ContextUserID).(string)
+	userID, _ := cookies.GetUserIDFromContext(r.Context())
 
-	for _, short := range req {
-		a.Deleter.queue <- DeleteTask{UserID: userID, Short: short}
-	}
+	a.Deleter.queue <- DeleteTask{UserID: userID, Shorts: req}
 
 	w.WriteHeader(http.StatusAccepted)
 }

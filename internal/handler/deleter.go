@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Oleg2210/goshortener/internal/service"
 	"go.uber.org/zap"
@@ -9,7 +10,7 @@ import (
 
 type DeleteTask struct {
 	UserID string
-	Short  string
+	Shorts []string
 }
 
 type Deleter struct {
@@ -22,7 +23,7 @@ type Deleter struct {
 func NewDeleter(ctx context.Context, logger *zap.Logger, service *service.ShortenerService, workers int) *Deleter {
 	d := &Deleter{
 		ctx:     ctx,
-		queue:   make(chan DeleteTask),
+		queue:   make(chan DeleteTask, workers),
 		service: service,
 		logger:  logger,
 	}
@@ -44,8 +45,8 @@ func (d *Deleter) worker() {
 				return
 			}
 
-			err := d.service.MarkDelete(d.ctx, task.Short, task.UserID)
-			d.logger.Error("failed to mark delete "+task.Short, zap.Error(err))
+			err := d.service.MarkDelete(d.ctx, task.Shorts, task.UserID)
+			d.logger.Error("failed to mark delete "+strings.Join(task.Shorts, ","), zap.Error(err))
 		}
 	}
 }

@@ -147,14 +147,14 @@ func (repo *FileRepository) GetUserShortens(ctx context.Context, userID string) 
 	return repo.memoryRepo.GetUserShortens(ctx, userID)
 }
 
-func (repo *FileRepository) MarkDelete(ctx context.Context, short string, userID string) error {
+func (repo *FileRepository) MarkDelete(ctx context.Context, shorts []string, userID string) error {
 	select {
 	case <-ctx.Done():
 		return nil
 	default:
 	}
 
-	err := repo.memoryRepo.MarkDelete(ctx, short, userID)
+	err := repo.memoryRepo.MarkDelete(ctx, shorts, userID)
 
 	if err != nil {
 		return err

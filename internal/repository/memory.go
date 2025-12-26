@@ -105,27 +105,31 @@ func (repo *MemoryRepository) GetUserShortens(ctx context.Context, userID string
 	shortens := make([]entities.URLRecord, len(repo.userData[userID]))
 
 	for k, v := range repo.userData[userID] {
-		shortens = append(shortens, entities.URLRecord{OriginalURL: v, Short: k})
+		if !repo.data[k].IsDeleted {
+			shortens = append(shortens, entities.URLRecord{OriginalURL: v, Short: k})
+		}
 	}
 
 	return shortens, nil
 }
 
-func (repo *MemoryRepository) MarkDelete(ctx context.Context, short string, userID string) error {
+func (repo *MemoryRepository) MarkDelete(ctx context.Context, shorts []string, userID string) error {
 	select {
 	case <-ctx.Done():
 		return nil
 	default:
 	}
 
-	url, ok := repo.data[short]
+	for _, short := range shorts {
+		url, ok := repo.data[short]
 
-	if !ok {
-		return nil
-	}
+		if !ok {
+			return nil
+		}
 
-	if url.UserID == userID {
-		repo.data[short] = MemoryRecord{OriginalURL: url.OriginalURL, UserID: userID, IsDeleted: true}
+		if url.UserID == userID {
+			repo.data[short] = MemoryRecord{OriginalURL: url.OriginalURL, UserID: userID, IsDeleted: true}
+		}
 	}
 
 	return nil

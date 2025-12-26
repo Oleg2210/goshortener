@@ -61,7 +61,6 @@ func main() {
 		repo,
 		config.MinLength,
 		config.MaxLength,
-		config.ContextUserID,
 	)
 
 	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
@@ -73,14 +72,14 @@ func main() {
 	}
 
 	router.Use(logging.LoggingMiddleware(logger))
-	router.Use(cookies.AuthMiddleware([]byte(config.AuthSecret), config.CookieUserID, config.ContextUserID))
+	router.Use(cookies.AuthMiddleware([]byte(config.AuthSecret)))
 	router.Use(compres.GzipMiddleware)
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
 	router.Post("/api/shorten/batch", app.HandlePostBatchJSON)
 	router.Get("/ping", app.HandlePing)
-	router.Get("/api/user/urls", app.HandleUserUrls)
+	router.Get("/api/user/urls", app.HandleGetAllUserUrls)
 	router.Delete("/api/user/urls", app.HandleMarkDelete)
 
 	server := &http.Server{

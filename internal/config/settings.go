@@ -13,12 +13,6 @@ const MinLength = 5
 // максимальная длина id
 const MaxLength = 10
 
-const CookieUserID = "UserID"
-
-type contextKey string
-
-const ContextUserID contextKey = CookieUserID
-
 var (
 	PortAddres      string
 	ResolveAddress  string
