@@ -50,16 +50,20 @@ func (service *ShortenerService) generateRandomID(letters string, size int) stri
 func (service *ShortenerService) Shorten(
 	ctx context.Context,
 	url string,
+	userID string,
 ) (string, error) {
 	for i := service.minLength; i < service.maxLength; i++ {
 		id := service.generateRandomID(
 			service.letters,
 			i,
 		)
+
 		short, err := service.repo.Save(
 			ctx,
 			id,
 			url,
+			userID,
+			false,
 		)
 
 		if err == nil {
@@ -76,14 +80,15 @@ func (service *ShortenerService) Shorten(
 func (service *ShortenerService) BatchShorten(
 	ctx context.Context,
 	records []entities.URLRecord,
+	userID string,
 ) error {
-	return service.repo.BatchSave(ctx, records)
+	return service.repo.BatchSave(ctx, records, userID)
 }
 
-func (service *ShortenerService) GetURL(ctx context.Context, id string) (string, error) {
+func (service *ShortenerService) GetURL(ctx context.Context, id string) (entities.URLRecord, error) {
 	url, exists := service.repo.Get(ctx, id)
 	if !exists {
-		return "", ErrIDDoesNotExists
+		return entities.URLRecord{}, ErrIDDoesNotExists
 	}
 
 	return url, nil
@@ -91,4 +96,12 @@ func (service *ShortenerService) GetURL(ctx context.Context, id string) (string,
 
 func (service *ShortenerService) Ping(ctx context.Context) bool {
 	return service.repo.Ping(ctx)
+}
+
+func (service *ShortenerService) GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error) {
+	return service.repo.GetUserShortens(ctx, userID)
+}
+
+func (service *ShortenerService) MarkDelete(ctx context.Context, shorts []string, userID string) error {
+	return service.repo.MarkDelete(ctx, shorts, userID)
 }

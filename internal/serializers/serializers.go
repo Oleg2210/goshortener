@@ -31,3 +31,17 @@ type BatchRequestItemSlice []BatchRequestItem
 
 //easyjson:json
 type BatchResponseItemSlice []BatchResponseItem
+
+// --- Response DTO for get all shortens ---
+//
+//easyjson:json
+type AllShortenResponseItem struct {
+	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+}
+
+//easyjson:json
+type AllShortenResponseItemSlice []AllShortenResponseItem
+
+//easyjson:json
+type DeleteRequest []string

@@ -18,6 +18,7 @@ var (
 	ResolveAddress  string
 	FileStoragePath string
 	DatabaseInfo    string
+	AuthSecret      string
 )
 
 type envConfig struct {
@@ -25,6 +26,7 @@ type envConfig struct {
 	ResolveAddress  string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DatabaseInfo    string `env:"DATABASE_DSN"`
+	AuthSecret      string `env:"AUTH_SECRET"`
 }
 
 func Load() {
@@ -50,5 +52,8 @@ func Load() {
 	}
 	if e.DatabaseInfo != "" {
 		DatabaseInfo = e.DatabaseInfo
+	}
+	if e.AuthSecret == "" {
+		AuthSecret = "secret"
 	}
 }
