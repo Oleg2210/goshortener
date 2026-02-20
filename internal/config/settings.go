@@ -20,7 +20,7 @@ var (
 	DatabaseInfo    string
 	AuthSecret      string
 	AuditFile       string
-	AuditUrl        string
+	AuditURL        string
 )
 
 type envConfig struct {
@@ -30,7 +30,7 @@ type envConfig struct {
 	DatabaseInfo    string `env:"DATABASE_DSN"`
 	AuthSecret      string `env:"AUTH_SECRET"`
 	AuditFile       string `env:"AUDIT_FILE"`
-	AuditUrl        string `env:"AUDIT_URL"`
+	AuditURL        string `env:"AUDIT_URL"`
 }
 
 func Load() {
@@ -38,7 +38,7 @@ func Load() {
 	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "base URL")
 	flag.StringVar(&FileStoragePath, "f", "urls-storage.json", "file storage")
 	flag.StringVar(&AuditFile, "audit-file", "", "audit file path")
-	flag.StringVar(&AuditUrl, "audit-url", "", "audit url")
+	flag.StringVar(&AuditURL, "audit-url", "", "audit url")
 
 	flag.Parse()
 
@@ -65,7 +65,7 @@ func Load() {
 	if e.AuditFile != "" {
 		AuditFile = e.AuditFile
 	}
-	if e.AuditUrl != "" {
-		AuditUrl = e.AuditUrl
+	if e.AuditURL != "" {
+		AuditURL = e.AuditURL
 	}
 }
