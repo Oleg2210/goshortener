@@ -37,6 +37,7 @@ func Load() {
 	flag.StringVar(&PortAddres, "a", ":8080", "server address")
 	flag.StringVar(&ResolveAddress, "b", "http://localhost:8080", "base URL")
 	flag.StringVar(&FileStoragePath, "f", "urls-storage.json", "file storage")
+	flag.StringVar(&DatabaseInfo, "d", "", "database dsn")
 	flag.StringVar(&AuditFile, "audit-file", "", "audit file path")
 	flag.StringVar(&AuditURL, "audit-url", "", "audit url")
 
