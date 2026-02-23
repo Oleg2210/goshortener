@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -86,6 +87,14 @@ func main() {
 	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
 
 	publisher := makePublisher()
+
+	go func() {
+		log.Println("pprof started at :6060")
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			log.Println("pprof error:", err)
+		}
+	}()
+
 	app := handler.App{
 		ShortenerService: shortenerService,
 		Logger:           logger,

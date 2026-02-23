@@ -44,6 +44,7 @@ func (p *AuditPublisher) Publish(ctx context.Context, event AuditEvent) {
 type FileObserver struct {
 	file *os.File
 	mu   sync.Mutex
+	enc  *json.Encoder
 }
 
 func NewFileObserver(path string) (*FileObserver, error) {
@@ -51,20 +52,16 @@ func NewFileObserver(path string) (*FileObserver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FileObserver{file: f}, nil
+	return &FileObserver{
+		file: f,
+		enc:  json.NewEncoder(f),
+	}, nil
 }
 
 func (o *FileObserver) Notify(ctx context.Context, event AuditEvent) error {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
 	o.mu.Lock()
 	defer o.mu.Unlock()
-
-	_, err = o.file.Write(append(data, '\n'))
-	return err
+	return o.enc.Encode(event)
 }
 
 type HTTPObserver struct {

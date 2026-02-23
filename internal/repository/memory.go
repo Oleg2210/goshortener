@@ -17,10 +17,12 @@ type MemoryRepository struct {
 	userData map[string]map[string]string
 }
 
+const expectedURLs = 10000
+
 func NewMemoryRepository() *MemoryRepository {
 	repo := &MemoryRepository{
-		data:     make(map[string]MemoryRecord),
-		userData: make(map[string]map[string]string),
+		data:     make(map[string]MemoryRecord, expectedURLs),
+		userData: make(map[string]map[string]string, expectedURLs),
 	}
 
 	return repo

@@ -162,7 +162,7 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var respItems serializers.BatchResponseItemSlice
+	var respItems serializers.BatchResponseItemSlice = make([]serializers.BatchResponseItem, 0, len(records))
 	for _, r := range records {
 		resultURL, err := url.JoinPath(config.ResolveAddress, r.Short)
 
@@ -243,7 +243,7 @@ func (a *App) HandleGetAllUserUrls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var respItems serializers.AllShortenResponseItemSlice
+	var respItems serializers.AllShortenResponseItemSlice = make([]serializers.AllShortenResponseItem, 0, len(records))
 	for _, r := range records {
 		resultURL, err := url.JoinPath(config.ResolveAddress, r.Short)
 
