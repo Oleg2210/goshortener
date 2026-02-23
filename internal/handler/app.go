@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/entities"
@@ -20,6 +21,7 @@ type App struct {
 	ShortenerService *service.ShortenerService
 	Logger           *zap.Logger
 	Deleter          *Deleter
+	Publisher        *AuditPublisher
 }
 
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +57,15 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	event := AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "shorten",
+		UserID: userID,
+		URL:    fullURL,
+	}
+
+	a.Publisher.Publish(r.Context(), event)
 
 	fmt.Fprint(w, resolveURL)
 }
@@ -100,6 +111,15 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 		Result: resultURL,
 	}
 	jsonBytes, _ := resp.MarshalJSON()
+
+	event := AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "shorten",
+		UserID: userID,
+		URL:    req.URL,
+	}
+
+	a.Publisher.Publish(r.Context(), event)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(returnStatus)
@@ -181,6 +201,15 @@ func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
+
+	userID, _ := cookies.GetUserIDFromContext(r.Context())
+	event := AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "follow",
+		UserID: userID,
+		URL:    url.OriginalURL,
+	}
+	a.Publisher.Publish(r.Context(), event)
 
 	w.Header().Set("Location", url.OriginalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)

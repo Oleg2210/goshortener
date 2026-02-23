@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -42,6 +43,25 @@ func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLReposi
 	return repository.NewMemoryRepository()
 }
 
+func makePublisher() *handler.AuditPublisher {
+	publisher := handler.NewAuditPublisher()
+
+	if config.AuditFile != "" {
+		fileObs, err := handler.NewFileObserver(config.AuditFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		publisher.Register(fileObs)
+	}
+
+	if config.AuditURL != "" {
+		httpObs := handler.NewHTTPObserver(config.AuditURL)
+		publisher.Register(httpObs)
+	}
+
+	return publisher
+}
+
 func main() {
 	config.Load()
 	router := chi.NewRouter()
@@ -65,10 +85,12 @@ func main() {
 
 	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
 
+	publisher := makePublisher()
 	app := handler.App{
 		ShortenerService: shortenerService,
 		Logger:           logger,
 		Deleter:          deleter,
+		Publisher:        publisher,
 	}
 
 	router.Use(logging.LoggingMiddleware(logger))
