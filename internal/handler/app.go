@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// App represents the main HTTP application with services, logger, deleter, and audit publisher.
 type App struct {
 	ShortenerService *service.ShortenerService
 	Logger           *zap.Logger
@@ -24,6 +25,8 @@ type App struct {
 	Publisher        *AuditPublisher
 }
 
+// HandlePost handles plain text POST requests for shortening a single URL.
+// It returns 201 Created on success or 409 Conflict if the URL already exists.
 func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	returnStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
@@ -71,6 +74,8 @@ func (a *App) HandlePost(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, resolveURL)
 }
 
+// HandlePostJSON handles JSON POST requests for shortening a single URL.
+// Expects {"url": "<original_url>"} and returns {"result": "<short_url>"} in JSON.
 func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	returnStatus := http.StatusCreated
 	body, err := io.ReadAll(r.Body)
@@ -128,6 +133,8 @@ func (a *App) HandlePostJSON(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// HandlePostBatchJSON handles batch JSON POST requests for shortening multiple URLs.
+// Expects a slice of {OriginalURL, CorrelationID}, responds with corresponding short URLs.
 func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -191,6 +198,8 @@ func (a *App) HandlePostBatchJSON(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// HandleGet handles GET requests for a short URL.
+// Redirects to the original URL (307 Temporary Redirect) or returns 410 Gone if deleted.
 func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
 	url, err := a.ShortenerService.GetURL(r.Context(), id)
@@ -219,6 +228,7 @@ func (a *App) HandleGet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+// HandlePing checks the health of the ShortenerService and responds with 200 OK if healthy.
 func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
 	if pinged := a.ShortenerService.Ping(r.Context()); !pinged {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -228,6 +238,8 @@ func (a *App) HandlePing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// HandleGetAllUserUrls returns all URLs shortened by the current user.
+// Responds with 200 OK and JSON array, or 204 No Content if no URLs exist.
 func (a *App) HandleGetAllUserUrls(w http.ResponseWriter, r *http.Request) {
 	userID, _ := cookies.GetUserIDFromContext(r.Context())
 	records, err := a.ShortenerService.GetUserShortens(r.Context(), userID)
@@ -272,6 +284,8 @@ func (a *App) HandleGetAllUserUrls(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// HandleMarkDelete queues URLs for deletion for the current user.
+// Accepts JSON array of short URLs and responds with 202 Accepted.
 func (a *App) HandleMarkDelete(w http.ResponseWriter, r *http.Request) {
 	var req serializers.DeleteRequest
 

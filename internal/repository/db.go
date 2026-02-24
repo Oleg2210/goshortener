@@ -12,6 +12,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// applyMigrations applies database migrations from the migrations folder.
 func applyMigrations(dsn string) error {
 	m, err := migrate.New(
 		"file://migrations",
@@ -23,17 +24,19 @@ func applyMigrations(dsn string) error {
 
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to migrations up: %w", err)
+		return fmt.Errorf("failed to run migrations up: %w", err)
 	}
 
 	return nil
 }
 
+// DBRepository represents a PostgreSQL-backed URL repository.
 type DBRepository struct {
 	DB  *sql.DB
 	DSN string
 }
 
+// NewDBRepository creates a new DBRepository and applies migrations.
 func NewDBRepository(DSN string) (*DBRepository, error) {
 	err := applyMigrations(DSN)
 	if err != nil {
@@ -42,7 +45,7 @@ func NewDBRepository(DSN string) (*DBRepository, error) {
 
 	db, err := sql.Open("pgx", DSN)
 	if err != nil {
-		return nil, fmt.Errorf("failed to conect to db: %w", err)
+		return nil, fmt.Errorf("failed to connect to db: %w", err)
 	}
 
 	repo := DBRepository{
@@ -52,11 +55,15 @@ func NewDBRepository(DSN string) (*DBRepository, error) {
 
 	return &repo, nil
 }
+
+// Ping checks database connectivity.
 func (repo *DBRepository) Ping(ctx context.Context) bool {
 	err := repo.DB.PingContext(ctx)
 	return err == nil
 }
 
+// Save inserts or updates a URL record in the database.
+// Returns the short URL used for storage.
 func (repo *DBRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	var returnedShort string
 	err := repo.DB.QueryRowContext(
@@ -76,6 +83,7 @@ func (repo *DBRepository) Save(ctx context.Context, id string, url string, userI
 	return returnedShort, nil
 }
 
+// Get retrieves a URL record by its short identifier.
 func (repo *DBRepository) Get(ctx context.Context, id string) (entities.URLRecord, bool) {
 	var url entities.URLRecord
 
@@ -89,6 +97,7 @@ func (repo *DBRepository) Get(ctx context.Context, id string) (entities.URLRecor
 	return url, true
 }
 
+// BatchSave inserts multiple URL records in a single transaction.
 func (repo *DBRepository) BatchSave(ctx context.Context, records []entities.URLRecord, userID string) error {
 	tx, err := repo.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -99,24 +108,22 @@ func (repo *DBRepository) BatchSave(ctx context.Context, records []entities.URLR
 		_, err := tx.ExecContext(ctx, "INSERT INTO urls(short, original, user_id) VALUES ($1, $2, $3)", r.Short, r.OriginalURL, userID)
 		if err != nil {
 			tx.Rollback()
-			return fmt.Errorf("failed to insert url while batch: %w", err)
+			return fmt.Errorf("failed to insert url during batch: %w", err)
 		}
 	}
 
 	return tx.Commit()
 }
 
+// GetUserShortens returns all non-deleted URLs for a given user.
 func (repo *DBRepository) GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error) {
 	rows, err := repo.DB.QueryContext(ctx, "SELECT short, original FROM urls WHERE user_id=$1 AND is_deleted=false", userID)
-
 	if err != nil {
 		return []entities.URLRecord{}, err
 	}
-
 	defer rows.Close()
 
 	var result []entities.URLRecord
-
 	for rows.Next() {
 		var r entities.URLRecord
 		if err := rows.Scan(&r.Short, &r.OriginalURL); err != nil {
@@ -132,6 +139,7 @@ func (repo *DBRepository) GetUserShortens(ctx context.Context, userID string) ([
 	return result, nil
 }
 
+// MarkDelete marks a list of URLs as deleted for a given user.
 func (repo *DBRepository) MarkDelete(ctx context.Context, shorts []string, userID string) error {
 	tx, err := repo.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -147,7 +155,6 @@ func (repo *DBRepository) MarkDelete(ctx context.Context, shorts []string, userI
 		userID,
 		shorts,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to mark delete in db: %w", err)
 	}

@@ -6,19 +6,25 @@ import (
 	"github.com/Oleg2210/goshortener/internal/entities"
 )
 
+// MemoryRecord represents a URL record stored in memory.
 type MemoryRecord struct {
 	OriginalURL string
 	UserID      string
 	IsDeleted   bool
 }
 
+// MemoryRepository is an in-memory implementation of a URL repository.
+// It allows fast storage and retrieval of URLs without using persistent storage.
 type MemoryRepository struct {
 	data     map[string]MemoryRecord
 	userData map[string]map[string]string
 }
 
+// expectedURLs is the initial map capacity for memory optimization.
 const expectedURLs = 10000
 
+// NewMemoryRepository creates a new MemoryRepository instance.
+// It preallocates maps to reduce memory allocations during runtime.
 func NewMemoryRepository() *MemoryRepository {
 	repo := &MemoryRepository{
 		data:     make(map[string]MemoryRecord, expectedURLs),
@@ -28,6 +34,8 @@ func NewMemoryRepository() *MemoryRepository {
 	return repo
 }
 
+// Save stores a new URL in the repository.
+// Returns ErrAlreadyExists if the id already exists.
 func (repo *MemoryRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	select {
 	case <-ctx.Done():
@@ -47,6 +55,8 @@ func (repo *MemoryRepository) Save(ctx context.Context, id string, url string, u
 	return id, nil
 }
 
+// BatchSave stores multiple URLs at once.
+// Returns ErrAlreadyExists if any of the IDs already exist.
 func (repo *MemoryRepository) BatchSave(ctx context.Context, records []entities.URLRecord, userID string) error {
 	select {
 	case <-ctx.Done():
@@ -72,6 +82,8 @@ func (repo *MemoryRepository) BatchSave(ctx context.Context, records []entities.
 	return nil
 }
 
+// Get retrieves a URL record by id.
+// Returns false if the record does not exist.
 func (repo *MemoryRepository) Get(ctx context.Context, id string) (entities.URLRecord, bool) {
 	select {
 	case <-ctx.Done():
@@ -83,6 +95,8 @@ func (repo *MemoryRepository) Get(ctx context.Context, id string) (entities.URLR
 	return entities.URLRecord{OriginalURL: url.OriginalURL, Short: id, IsDeleted: url.IsDeleted}, exists
 }
 
+// Ping checks the repository availability.
+// Always returns false for in-memory storage.
 func (repo *MemoryRepository) Ping(ctx context.Context) bool {
 	select {
 	case <-ctx.Done():
@@ -93,6 +107,7 @@ func (repo *MemoryRepository) Ping(ctx context.Context) bool {
 	return false
 }
 
+// GetUserShortens returns all non-deleted URLs for a specific user.
 func (repo *MemoryRepository) GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error) {
 	select {
 	case <-ctx.Done():
@@ -104,8 +119,7 @@ func (repo *MemoryRepository) GetUserShortens(ctx context.Context, userID string
 		return []entities.URLRecord{}, nil
 	}
 
-	shortens := make([]entities.URLRecord, len(repo.userData[userID]))
-
+	shortens := make([]entities.URLRecord, 0, len(repo.userData[userID]))
 	for k, v := range repo.userData[userID] {
 		if !repo.data[k].IsDeleted {
 			shortens = append(shortens, entities.URLRecord{OriginalURL: v, Short: k})
@@ -115,6 +129,7 @@ func (repo *MemoryRepository) GetUserShortens(ctx context.Context, userID string
 	return shortens, nil
 }
 
+// MarkDelete marks a list of URLs as deleted for a given user.
 func (repo *MemoryRepository) MarkDelete(ctx context.Context, shorts []string, userID string) error {
 	select {
 	case <-ctx.Done():
@@ -124,9 +139,8 @@ func (repo *MemoryRepository) MarkDelete(ctx context.Context, shorts []string, u
 
 	for _, short := range shorts {
 		url, ok := repo.data[short]
-
 		if !ok {
-			return nil
+			continue
 		}
 
 		if url.UserID == userID {

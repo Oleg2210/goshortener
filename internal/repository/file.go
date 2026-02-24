@@ -9,6 +9,7 @@ import (
 	"github.com/Oleg2210/goshortener/internal/entities"
 )
 
+// record represents a URL record stored in the file repository.
 type record struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
@@ -17,12 +18,16 @@ type record struct {
 	IsDeleted   bool   `json:"is_deleted"`
 }
 
+// FileRepository is a persistent URL repository that stores records in a JSON file.
+// It wraps a MemoryRepository and synchronizes reads/writes to disk.
 type FileRepository struct {
 	memoryRepo *MemoryRepository
 	path       string
 	mu         sync.Mutex
 }
 
+// NewFileRepository creates a new FileRepository.
+// It loads existing records from the file if it exists.
 func NewFileRepository(ctx context.Context, fileStoragePath string) (*FileRepository, error) {
 	repo := &FileRepository{
 		memoryRepo: NewMemoryRepository(),
@@ -37,9 +42,9 @@ func NewFileRepository(ctx context.Context, fileStoragePath string) (*FileReposi
 	return repo, nil
 }
 
+// loadDataFromFile reads records from the JSON file and populates the memory repository.
 func (repo *FileRepository) loadDataFromFile(ctx context.Context) error {
 	bytes, err := os.ReadFile(repo.path)
-
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -58,6 +63,7 @@ func (repo *FileRepository) loadDataFromFile(ctx context.Context) error {
 	return nil
 }
 
+// saveToFile writes all in-memory records to the JSON file.
 func (repo *FileRepository) saveToFile() error {
 	records := make([]record, 0, len(repo.memoryRepo.data))
 	for short, url := range repo.memoryRepo.data {
@@ -77,6 +83,9 @@ func (repo *FileRepository) saveToFile() error {
 
 	return os.WriteFile(repo.path, bytes, 0644)
 }
+
+// Save stores a new URL record and persists it to the file.
+// Returns ErrAlreadyExists if the id already exists.
 func (repo *FileRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	select {
 	case <-ctx.Done():
@@ -100,6 +109,8 @@ func (repo *FileRepository) Save(ctx context.Context, id string, url string, use
 	return id, repo.saveToFile()
 }
 
+// BatchSave stores multiple URL records and persists them to the file.
+// Returns ErrAlreadyExists if any of the IDs already exist.
 func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.URLRecord, userID string) error {
 	select {
 	case <-ctx.Done():
@@ -117,6 +128,7 @@ func (repo *FileRepository) BatchSave(ctx context.Context, records []entities.UR
 	return repo.saveToFile()
 }
 
+// Get retrieves a URL record by id.
 func (repo *FileRepository) Get(ctx context.Context, id string) (entities.URLRecord, bool) {
 	select {
 	case <-ctx.Done():
@@ -127,6 +139,7 @@ func (repo *FileRepository) Get(ctx context.Context, id string) (entities.URLRec
 	return repo.memoryRepo.Get(ctx, id)
 }
 
+// Ping checks the repository availability. Always returns true.
 func (repo *FileRepository) Ping(ctx context.Context) bool {
 	select {
 	case <-ctx.Done():
@@ -137,6 +150,7 @@ func (repo *FileRepository) Ping(ctx context.Context) bool {
 	return true
 }
 
+// GetUserShortens returns all non-deleted URLs for a specific user.
 func (repo *FileRepository) GetUserShortens(ctx context.Context, userID string) ([]entities.URLRecord, error) {
 	select {
 	case <-ctx.Done():
@@ -147,6 +161,7 @@ func (repo *FileRepository) GetUserShortens(ctx context.Context, userID string) 
 	return repo.memoryRepo.GetUserShortens(ctx, userID)
 }
 
+// MarkDelete marks a list of URLs as deleted for a given user and persists the change to the file.
 func (repo *FileRepository) MarkDelete(ctx context.Context, shorts []string, userID string) error {
 	select {
 	case <-ctx.Done():
@@ -155,7 +170,6 @@ func (repo *FileRepository) MarkDelete(ctx context.Context, shorts []string, use
 	}
 
 	err := repo.memoryRepo.MarkDelete(ctx, shorts, userID)
-
 	if err != nil {
 		return err
 	}
