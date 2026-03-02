@@ -44,10 +44,10 @@ func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLReposi
 }
 
 func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
-	publisher := handler.NewAuditPublisher()
+	publisher := handler.NewAuditPublisher(100, 100, logger)
 
 	if config.AuditFile != "" {
-		fileObs, err := handler.NewFileObserver(config.AuditFile)
+		fileObs, err := handler.NewFileObserver(config.AuditFile, logger)
 		if err != nil {
 			logger.Error("failed to create db repo", zap.Error(err))
 			return nil, err
@@ -56,7 +56,7 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 	}
 
 	if config.AuditURL != "" {
-		httpObs := handler.NewHTTPObserver(config.AuditURL)
+		httpObs := handler.NewHTTPObserver(config.AuditURL, logger)
 		publisher.Register(httpObs)
 	}
 
