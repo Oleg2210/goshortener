@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -44,13 +43,14 @@ func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLReposi
 	return repository.NewMemoryRepository()
 }
 
-func makePublisher() *handler.AuditPublisher {
+func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 	publisher := handler.NewAuditPublisher()
 
 	if config.AuditFile != "" {
 		fileObs, err := handler.NewFileObserver(config.AuditFile)
 		if err != nil {
-			log.Fatal(err)
+			logger.Error("failed to create db repo", zap.Error(err))
+			return nil, err
 		}
 		publisher.Register(fileObs)
 	}
@@ -60,7 +60,7 @@ func makePublisher() *handler.AuditPublisher {
 		publisher.Register(httpObs)
 	}
 
-	return publisher
+	return publisher, nil
 }
 
 func main() {
@@ -86,12 +86,16 @@ func main() {
 
 	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
 
-	publisher := makePublisher()
+	publisher, err := makePublisher(logger)
+	if err != nil {
+		logger.Error("failed to init publisher: ", zap.Error(err))
+		os.Exit(1)
+	}
 
 	go func() {
-		log.Println("pprof started at :6060")
+		logger.Info("pprof started at :6060")
 		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-			log.Println("pprof error:", err)
+			logger.Error("pprof error: ", zap.Error(err))
 		}
 	}()
 
