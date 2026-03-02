@@ -13,7 +13,10 @@ func BenchmarkShorten(b *testing.B) {
 	url := "https://example.com/long/path/to/resource"
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = svc.Shorten(context.Background(), url, "user1")
-	}
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, _ = svc.Shorten(context.Background(), url, "user1")
+		}
+	})
 }
