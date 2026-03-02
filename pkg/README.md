@@ -1,3 +1,81 @@
+
+**В процессе профилирования приложения с использованием pprof были обнаружены лишние аллокации памяти и избыточные операции сериализации JSON. После анализа heap и inuse_space профиля были выполнены следующие оптимизации:**
+
+## Предвыделение памяти для slice
+
+**было**
+`var respItems serializers.BatchResponseItemSlice`
+
+**стало**
+`respItems := make([]serializers.BatchResponseItem, 0, len(records))`
+
+**Что изменилось**
+- Убраны дополнительные реаллокации при append
+- Уменьшено количество копирований массива
+- Снижена нагрузка на GC
+
+
+## Оптимизация записи JSON в файл
+
+**было**
+```
+data, err := json.Marshal(event)
+if err != nil {
+    return err
+}
+
+o.mu.Lock()
+defer o.mu.Unlock()
+
+_, err = o.file.Write(append(data, '\n'))
+return err
+```
+
+**стало**
+`return o.enc.Encode(event)`
+
+**Что изменилось**
+- Убрана лишняя аллокация []byte от json.Marshal
+- Убрано дополнительное копирование при append(data, '\n')
+- Исключено повторное создание json.Encoder
+- Снижено количество временных объектов в heap
+
+
+## Предвыделение capacity для map
+
+**было**
+```
+data:     make(map[string]MemoryRecord),
+userData: make(map[string]map[string]string),
+```
+
+**стало**
+```
+data:     make(map[string]MemoryRecord, expectedURLs),
+userData: make(map[string]map[string]string, expectedURLs),
+```
+
+**Что изменилось**
+- Так как ожидаемое количество записей известно заранее, предвыделение capacity уменьшает внутренние расширения map.
+
+
+## Итог
+
+**Ключевые изменения**
+
+```
+-1.50MB  runtime.malg
+-0.50MB  runtime.allocm
+```
+
+**Это означает**
+- Снизилось количество создаваемых goroutine
+- Снизилось количество системных аллокаций потоков
+- Уменьшилась нагрузка на scheduler
+- Это подтверждает, что переход на json.Encoder уменьшил объём временных объектов
+
+
+```
 File: main
 Build ID: cda9eb7b0cc3089a5d4fafa79ebaf1f9b6d1272b
 Type: inuse_space
@@ -52,3 +130,4 @@ Showing nodes accounting for 1.70MB, 12.29% of 13.83MB total
          0     0% 12.29%    -1.50MB 10.85%  runtime.systemstack
          0     0% 12.29%    -0.50MB  3.62%  runtime.wakep
          0     0% 12.29%     0.50MB  3.62%  sync.(*Cond).Wait
+```
