@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Oleg2210/goshortener/internal/entities"
 )
 
-// MemoryRecord represents a URL record stored in memory.
 type MemoryRecord struct {
 	OriginalURL string
 	UserID      string
@@ -16,6 +16,7 @@ type MemoryRecord struct {
 // MemoryRepository is an in-memory implementation of a URL repository.
 // It allows fast storage and retrieval of URLs without using persistent storage.
 type MemoryRepository struct {
+	mu       sync.RWMutex
 	data     map[string]MemoryRecord
 	userData map[string]map[string]string
 }
@@ -36,12 +37,16 @@ func NewMemoryRepository() *MemoryRepository {
 
 // Save stores a new URL in the repository.
 // Returns ErrAlreadyExists if the id already exists.
+
 func (repo *MemoryRepository) Save(ctx context.Context, id string, url string, userID string, isDeleted bool) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
 	default:
 	}
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
 
 	if _, exists := repo.data[id]; exists {
 		return "", ErrAlreadyExists
@@ -63,6 +68,9 @@ func (repo *MemoryRepository) BatchSave(ctx context.Context, records []entities.
 		return ctx.Err()
 	default:
 	}
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
 
 	for _, r := range records {
 		if _, exists := repo.data[r.Short]; exists {
@@ -91,6 +99,9 @@ func (repo *MemoryRepository) Get(ctx context.Context, id string) (entities.URLR
 	default:
 	}
 
+	repo.mu.RLock()
+	defer repo.mu.RUnlock()
+
 	url, exists := repo.data[id]
 	return entities.URLRecord{OriginalURL: url.OriginalURL, Short: id, IsDeleted: url.IsDeleted}, exists
 }
@@ -115,6 +126,9 @@ func (repo *MemoryRepository) GetUserShortens(ctx context.Context, userID string
 	default:
 	}
 
+	repo.mu.RLock()
+	defer repo.mu.RUnlock()
+
 	if repo.userData[userID] == nil {
 		return []entities.URLRecord{}, nil
 	}
@@ -136,6 +150,9 @@ func (repo *MemoryRepository) MarkDelete(ctx context.Context, shorts []string, u
 		return nil
 	default:
 	}
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
 
 	for _, short := range shorts {
 		url, ok := repo.data[short]
