@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -42,6 +43,26 @@ func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLReposi
 	return repository.NewMemoryRepository()
 }
 
+func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
+	publisher := handler.NewAuditPublisher(100, 100, logger)
+
+	if config.AuditFile != "" {
+		fileObs, err := handler.NewFileObserver(config.AuditFile, logger)
+		if err != nil {
+			logger.Error("failed to create db repo", zap.Error(err))
+			return nil, err
+		}
+		publisher.Register(fileObs)
+	}
+
+	if config.AuditURL != "" {
+		httpObs := handler.NewHTTPObserver(config.AuditURL, logger)
+		publisher.Register(httpObs)
+	}
+
+	return publisher, nil
+}
+
 func main() {
 	config.Load()
 	router := chi.NewRouter()
@@ -65,10 +86,24 @@ func main() {
 
 	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
 
+	publisher, err := makePublisher(logger)
+	if err != nil {
+		logger.Error("failed to init publisher: ", zap.Error(err))
+		os.Exit(1)
+	}
+
+	go func() {
+		logger.Info("pprof started at :6060")
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			logger.Error("pprof error: ", zap.Error(err))
+		}
+	}()
+
 	app := handler.App{
 		ShortenerService: shortenerService,
 		Logger:           logger,
 		Deleter:          deleter,
+		Publisher:        publisher,
 	}
 
 	router.Use(logging.LoggingMiddleware(logger))
