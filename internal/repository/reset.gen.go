@@ -3,9 +3,10 @@
 package repository
 
 func (s *MemoryRecord) Reset() {
-if s == nil { return }
-s.OriginalURL = ""
-s.UserID = ""
-s.IsDeleted = false
+	if s == nil {
+		return
+	}
+	s.OriginalURL = ""
+	s.UserID = ""
+	s.IsDeleted = false
 }
-
