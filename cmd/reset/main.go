@@ -5,15 +5,33 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 type structInfo struct {
 	Name   string
 	Struct *ast.StructType
 }
+
+type resetTemplateData struct {
+	StructName string
+	Fields     []string
+}
+
+var resetTemplate = template.Must(template.New("reset").Parse(`
+func (s *{{.StructName}}) Reset() {
+	if s == nil {
+		return
+	}
+{{- range .Fields}}
+	{{.}}
+{{- end}}
+}
+`))
 
 func main() {
 	root := "."
@@ -80,7 +98,7 @@ func main() {
 	})
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	for dir, structs := range packages {
@@ -96,7 +114,7 @@ func main() {
 
 		err := writeFile(dir, pkgName, code.String())
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 }
@@ -112,10 +130,7 @@ func hasResetComment(cg *ast.CommentGroup) bool {
 
 func generateReset(s structInfo) string {
 
-	var b strings.Builder
-
-	fmt.Fprintf(&b, "func (s *%s) Reset() {\n", s.Name)
-	b.WriteString("if s == nil { return }\n")
+	var fields []string
 
 	for _, field := range s.Struct.Fields.List {
 
@@ -123,60 +138,69 @@ func generateReset(s structInfo) string {
 			continue
 		}
 
-		name := field.Names[0].Name
+		for _, n := range field.Names {
 
-		switch t := field.Type.(type) {
+			name := n.Name
 
-		case *ast.Ident:
+			switch t := field.Type.(type) {
 
-			switch t.Name {
+			case *ast.Ident:
 
-			case "int", "int8", "int16", "int32", "int64",
-				"uint", "uint8", "uint16", "uint32", "uint64",
-				"float32", "float64":
+				switch t.Name {
 
-				fmt.Fprintf(&b, "s.%s = 0\n", name)
+				case "int", "int8", "int16", "int32", "int64",
+					"uint", "uint8", "uint16", "uint32", "uint64",
+					"float32", "float64":
 
-			case "string":
+					fields = append(fields, fmt.Sprintf("s.%s = 0", name))
 
-				fmt.Fprintf(&b, "s.%s = \"\"\n", name)
+				case "string":
 
-			case "bool":
+					fields = append(fields, fmt.Sprintf(`s.%s = ""`, name))
 
-				fmt.Fprintf(&b, "s.%s = false\n", name)
+				case "bool":
 
-			default:
+					fields = append(fields, fmt.Sprintf("s.%s = false", name))
 
-				fmt.Fprintf(&b, `
+				default:
+
+					fields = append(fields, fmt.Sprintf(`
 if resetter, ok := any(&s.%s).(interface{ Reset() }); ok {
 	resetter.Reset()
-}
-`, name)
-			}
+}`, name))
+				}
 
-		case *ast.ArrayType:
+			case *ast.ArrayType:
 
-			fmt.Fprintf(&b, "s.%s = s.%s[:0]\n", name, name)
+				fields = append(fields, fmt.Sprintf("s.%s = s.%s[:0]", name, name))
 
-		case *ast.MapType:
+			case *ast.MapType:
 
-			fmt.Fprintf(&b, "clear(s.%s)\n", name)
+				fields = append(fields, fmt.Sprintf("clear(s.%s)", name))
 
-		case *ast.StarExpr:
+			case *ast.StarExpr:
 
-			fmt.Fprintf(&b, `
+				fields = append(fields, fmt.Sprintf(`
 if s.%s != nil {
 	if resetter, ok := any(s.%s).(interface{ Reset() }); ok {
 		resetter.Reset()
 	}
-}
-`, name, name)
+}`, name, name))
+			}
 		}
 	}
 
-	b.WriteString("}\n")
+	data := resetTemplateData{
+		StructName: s.Name,
+		Fields:     fields,
+	}
 
-	return b.String()
+	var buf strings.Builder
+	if err := resetTemplate.Execute(&buf, data); err != nil {
+		log.Fatal(err)
+	}
+
+	return buf.String()
 }
 
 func writeFile(dir string, pkg string, code string) error {

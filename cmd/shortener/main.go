@@ -20,22 +20,15 @@ import (
 )
 
 var (
-	buildVersion string
-	buildDate    string
-	buildCommit  string
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
 )
 
-func valueOrNA(v string) string {
-	if v == "" {
-		return "N/A"
-	}
-	return v
-}
-
 func printBuildVars() {
-	fmt.Printf("Build version: %s\n", valueOrNA(buildVersion))
-	fmt.Printf("Build date: %s\n", valueOrNA(buildDate))
-	fmt.Printf("Build commit: %s\n", valueOrNA(buildCommit))
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 }
 
 func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLRepository {

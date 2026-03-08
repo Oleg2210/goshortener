@@ -2,6 +2,7 @@ package main
 
 import (
 	"go/ast"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -14,6 +15,18 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (interface{}, error) {
 
+	var mainFunc *ast.FuncDecl
+
+	if pass.Pkg.Name() == "main" {
+		for _, file := range pass.Files {
+			for _, decl := range file.Decls {
+				if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == "main" {
+					mainFunc = fn
+				}
+			}
+		}
+	}
+
 	for _, file := range pass.Files {
 
 		ast.Inspect(file, func(n ast.Node) bool {
@@ -23,27 +36,38 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return true
 			}
 
-			// panic()
 			if ident, ok := call.Fun.(*ast.Ident); ok {
 				if ident.Name == "panic" {
 					pass.Reportf(call.Pos(), "panic usage is forbidden")
 				}
 			}
 
-			// log.Fatal / os.Exit
-			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
 
-				pkgIdent, ok := sel.X.(*ast.Ident)
-				if !ok {
-					return true
+			obj := pass.TypesInfo.Uses[sel.Sel]
+
+			fn, ok := obj.(*types.Func)
+			if !ok {
+				return true
+			}
+
+			pkg := fn.Pkg()
+			if pkg == nil {
+				return true
+			}
+
+			if pkg.Path() == "log" && fn.Name() == "Fatal" {
+				if !insideNode(mainFunc, call) {
+					pass.Reportf(call.Pos(), "log.Fatal cannot be used outside main()")
 				}
+			}
 
-				if (pkgIdent.Name == "log" && sel.Sel.Name == "Fatal") ||
-					(pkgIdent.Name == "os" && sel.Sel.Name == "Exit") {
-
-					if !insideMain(pass, call) {
-						pass.Reportf(call.Pos(), "%s.%s cannot be used outside main()", pkgIdent.Name, sel.Sel.Name)
-					}
+			if pkg.Path() == "os" && fn.Name() == "Exit" {
+				if !insideNode(mainFunc, call) {
+					pass.Reportf(call.Pos(), "os.Exit cannot be used outside main()")
 				}
 			}
 
@@ -54,41 +78,13 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func insideMain(pass *analysis.Pass, node ast.Node) bool {
-
-	for _, file := range pass.Files {
-
-		var currentFunc *ast.FuncDecl
-
-		ast.Inspect(file, func(n ast.Node) bool {
-
-			switch v := n.(type) {
-
-			case *ast.FuncDecl:
-				currentFunc = v
-
-			case *ast.CallExpr:
-				if v == node {
-
-					if currentFunc == nil {
-						return false
-					}
-
-					if currentFunc.Name.Name != "main" {
-						return false
-					}
-
-					if pass.Pkg.Name() != "main" {
-						return false
-					}
-
-					return true
-				}
-			}
-
-			return true
-		})
+func insideNode(fn *ast.FuncDecl, node ast.Node) bool {
+	if fn == nil {
+		return false
 	}
 
-	return false
+	start := fn.Pos()
+	end := fn.End()
+
+	return node.Pos() >= start && node.Pos() <= end
 }
