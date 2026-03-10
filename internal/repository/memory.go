@@ -7,6 +7,7 @@ import (
 	"github.com/Oleg2210/goshortener/internal/entities"
 )
 
+// generate:reset
 type MemoryRecord struct {
 	OriginalURL string
 	UserID      string

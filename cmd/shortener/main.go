@@ -19,6 +19,18 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
+func printBuildVars() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+}
+
 func chooseStorage(ctx context.Context, logger *zap.Logger) repository.URLRepository {
 	if config.DatabaseInfo != "" {
 		repo, err := repository.NewDBRepository(config.DatabaseInfo)
@@ -64,6 +76,7 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 }
 
 func main() {
+	printBuildVars()
 	config.Load()
 	router := chi.NewRouter()
 
