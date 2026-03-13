@@ -138,5 +138,10 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	server.ListenAndServe()
+	if config.EnableHTTPS {
+		server.ListenAndServeTLS(config.CertHTTPS, config.KeyHTTPS)
+	} else {
+		server.ListenAndServe()
+	}
+
 }

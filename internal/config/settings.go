@@ -13,6 +13,10 @@ const MinLength = 5
 // максимальная длина id
 const MaxLength = 10
 
+const CertHTTPS = "cert.pem"
+
+const KeyHTTPS = "key.pem"
+
 var (
 	PortAddres      string
 	ResolveAddress  string
@@ -21,6 +25,7 @@ var (
 	AuthSecret      string
 	AuditFile       string
 	AuditURL        string
+	EnableHTTPS     bool
 )
 
 type envConfig struct {
@@ -31,6 +36,7 @@ type envConfig struct {
 	AuthSecret      string `env:"AUTH_SECRET"`
 	AuditFile       string `env:"AUDIT_FILE"`
 	AuditURL        string `env:"AUDIT_URL"`
+	EnableHTTPS     bool   `env:"ENABLE_HTTPS"`
 }
 
 func Load() {
@@ -40,6 +46,7 @@ func Load() {
 	flag.StringVar(&DatabaseInfo, "d", "", "database dsn")
 	flag.StringVar(&AuditFile, "audit-file", "", "audit file path")
 	flag.StringVar(&AuditURL, "audit-url", "", "audit url")
+	flag.BoolVar(&EnableHTTPS, "s", false, "enable https")
 
 	flag.Parse()
 
@@ -68,5 +75,8 @@ func Load() {
 	}
 	if e.AuditURL != "" {
 		AuditURL = e.AuditURL
+	}
+	if e.EnableHTTPS {
+		EnableHTTPS = true
 	}
 }
