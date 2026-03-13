@@ -77,7 +77,12 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 
 func main() {
 	printBuildVars()
-	config.Load()
+	err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse config: %v\n", err)
+		os.Exit(1)
+	}
+
 	router := chi.NewRouter()
 
 	logger, err := zap.NewProduction()
