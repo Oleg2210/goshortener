@@ -122,16 +122,16 @@ func loadFileConfig() error {
 		return err
 	}
 
-	if fcfg.ServerAddress != "" {
+	if PortAddres == "" && fcfg.ServerAddress != "" {
 		PortAddres = fcfg.ServerAddress
 	}
-	if fcfg.BaseURL != "" {
+	if ResolveAddress == "" && fcfg.BaseURL != "" {
 		ResolveAddress = fcfg.BaseURL
 	}
-	if fcfg.FileStoragePath != "" {
+	if FileStoragePath == "" && fcfg.FileStoragePath != "" {
 		FileStoragePath = fcfg.FileStoragePath
 	}
-	if fcfg.DatabaseDSN != "" {
+	if DatabaseInfo == "" && fcfg.DatabaseDSN != "" {
 		DatabaseInfo = fcfg.DatabaseDSN
 	}
 	if fcfg.EnableHTTPS {
