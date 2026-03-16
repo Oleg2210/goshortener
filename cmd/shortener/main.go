@@ -6,6 +6,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
@@ -143,10 +145,43 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	closeCh := make(chan struct{})
+	go shutDown(cancel, logger, server, closeCh)
+
+	var serverErr error
 	if config.EnableHTTPS {
-		server.ListenAndServeTLS(config.CertHTTPS, config.KeyHTTPS)
+		serverErr = server.ListenAndServeTLS(config.CertHTTPS, config.KeyHTTPS)
 	} else {
-		server.ListenAndServe()
+		serverErr = server.ListenAndServe()
 	}
 
+	if serverErr != nil && serverErr != http.ErrServerClosed {
+		logger.Fatal("server error", zap.Error(err))
+	}
+
+	<-closeCh
+	logger.Info("server is stopped")
+}
+
+func shutDown(cancel context.CancelFunc, logger *zap.Logger, server *http.Server, endChan chan struct{}) {
+	sigCh := make(chan os.Signal, 1)
+
+	signal.Notify(sigCh,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+
+	sig := <-sigCh
+	logger.Info("got signal ", zap.Any("sig", sig))
+
+	cancel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error("shutdown error: ", zap.Error(err))
+	}
+
+	close(endChan)
 }
