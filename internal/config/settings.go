@@ -1,21 +1,20 @@
 package config
 
 import (
-	"encoding/json"
 	"flag"
-	"log"
-	"os"
+	"fmt"
+	"strings"
 
-	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/spf13/viper"
 )
 
 const (
-	// минимальная длина id
 	MinLength = 5
-	// максимальная длина id
-	MaxLength              = 10
-	CertHTTPS              = "cert.pem"
-	KeyHTTPS               = "key.pem"
+	MaxLength = 10
+
+	CertHTTPS = "cert.pem"
+	KeyHTTPS  = "key.pem"
+
 	DefaultPortAddres      = ":8080"
 	DefaultResolveAddress  = "http://localhost:8080"
 	DefaultFileStoragePath = "urls-storage.json"
@@ -33,26 +32,6 @@ var (
 	ConfigFile      string
 )
 
-type envConfig struct {
-	PortAddres      string `env:"SERVER_ADDRESS"`
-	ResolveAddress  string `env:"BASE_URL"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseInfo    string `env:"DATABASE_DSN"`
-	AuthSecret      string `env:"AUTH_SECRET"`
-	AuditFile       string `env:"AUDIT_FILE"`
-	AuditURL        string `env:"AUDIT_URL"`
-	EnableHTTPS     bool   `env:"ENABLE_HTTPS"`
-	ConfigFile      string `env:"CONFIG"`
-}
-
-type fileConfig struct {
-	ServerAddress   string `json:"server_address"`
-	BaseURL         string `json:"base_url"`
-	FileStoragePath string `json:"file_storage_path"`
-	DatabaseDSN     string `json:"database_dsn"`
-	EnableHTTPS     bool   `json:"enable_https"`
-}
-
 func Load() error {
 	flag.StringVar(&PortAddres, "a", "", "server address")
 	flag.StringVar(&ResolveAddress, "b", "", "base URL")
@@ -61,94 +40,72 @@ func Load() error {
 	flag.StringVar(&AuditFile, "audit-file", "", "audit file path")
 	flag.StringVar(&AuditURL, "audit-url", "", "audit url")
 	flag.BoolVar(&EnableHTTPS, "s", false, "enable https")
-	flag.StringVar(&ConfigFile, "c", "", "audit url")
+	flag.StringVar(&ConfigFile, "c", "", "config file path")
 
 	flag.Parse()
 
-	var e envConfig
-	if err := cleanenv.ReadEnv(&e); err != nil {
-		log.Fatalf("config error: %v", err)
-	}
+	v := viper.New()
 
-	if e.PortAddres != "" {
-		PortAddres = e.PortAddres
-	}
-	if e.ResolveAddress != "" {
-		ResolveAddress = e.ResolveAddress
-	}
-	if e.FileStoragePath != "" {
-		FileStoragePath = e.FileStoragePath
-	}
-	if e.DatabaseInfo != "" {
-		DatabaseInfo = e.DatabaseInfo
-	}
-	if e.AuthSecret == "" {
-		AuthSecret = "secret"
-	}
-	if e.AuditFile != "" {
-		AuditFile = e.AuditFile
-	}
-	if e.AuditURL != "" {
-		AuditURL = e.AuditURL
-	}
-	if e.EnableHTTPS {
-		EnableHTTPS = true
-	}
-	if e.ConfigFile != "" {
-		ConfigFile = e.ConfigFile
+	v.SetDefault("server_address", DefaultPortAddres)
+	v.SetDefault("base_url", DefaultResolveAddress)
+	v.SetDefault("file_storage_path", DefaultFileStoragePath)
+	v.SetDefault("auth_secret", "secret")
+
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	v.BindEnv("server_address", "SERVER_ADDRESS")
+	v.BindEnv("base_url", "BASE_URL")
+	v.BindEnv("file_storage_path", "FILE_STORAGE_PATH")
+	v.BindEnv("database_dsn", "DATABASE_DSN")
+	v.BindEnv("auth_secret", "AUTH_SECRET")
+	v.BindEnv("audit_file", "AUDIT_FILE")
+	v.BindEnv("audit_url", "AUDIT_URL")
+	v.BindEnv("enable_https", "ENABLE_HTTPS")
+	v.BindEnv("config", "CONFIG")
+
+	if ConfigFile == "" {
+		ConfigFile = v.GetString("config")
 	}
 
 	if ConfigFile != "" {
-		err := loadFileConfig()
-		if err != nil {
-			return err
+		v.SetConfigFile(ConfigFile)
+
+		if err := v.ReadInConfig(); err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
-	setDefaultValues()
-	return nil
-}
+	if PortAddres != "" {
+		v.Set("server_address", PortAddres)
+	}
+	if ResolveAddress != "" {
+		v.Set("base_url", ResolveAddress)
+	}
+	if FileStoragePath != "" {
+		v.Set("file_storage_path", FileStoragePath)
+	}
+	if DatabaseInfo != "" {
+		v.Set("database_dsn", DatabaseInfo)
+	}
+	if AuditFile != "" {
+		v.Set("audit_file", AuditFile)
+	}
+	if AuditURL != "" {
+		v.Set("audit_url", AuditURL)
+	}
+	if EnableHTTPS {
+		v.Set("enable_https", true)
+	}
 
-func loadFileConfig() error {
-	file, err := os.Open(ConfigFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	var fcfg fileConfig
-
-	if err := json.NewDecoder(file).Decode(&fcfg); err != nil {
-		return err
-	}
-
-	if PortAddres == "" && fcfg.ServerAddress != "" {
-		PortAddres = fcfg.ServerAddress
-	}
-	if ResolveAddress == "" && fcfg.BaseURL != "" {
-		ResolveAddress = fcfg.BaseURL
-	}
-	if FileStoragePath == "" && fcfg.FileStoragePath != "" {
-		FileStoragePath = fcfg.FileStoragePath
-	}
-	if DatabaseInfo == "" && fcfg.DatabaseDSN != "" {
-		DatabaseInfo = fcfg.DatabaseDSN
-	}
-	if fcfg.EnableHTTPS {
-		EnableHTTPS = true
-	}
+	PortAddres = v.GetString("server_address")
+	ResolveAddress = v.GetString("base_url")
+	FileStoragePath = v.GetString("file_storage_path")
+	DatabaseInfo = v.GetString("database_dsn")
+	AuthSecret = v.GetString("auth_secret")
+	AuditFile = v.GetString("audit_file")
+	AuditURL = v.GetString("audit_url")
+	EnableHTTPS = v.GetBool("enable_https")
 
 	return nil
-}
-
-func setDefaultValues() {
-	if PortAddres == "" {
-		PortAddres = DefaultPortAddres
-	}
-	if ResolveAddress == "" {
-		ResolveAddress = DefaultPortAddres
-	}
-	if FileStoragePath == "" {
-		FileStoragePath = DefaultFileStoragePath
-	}
 }
