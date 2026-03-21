@@ -63,7 +63,7 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 	if config.AuditFile != "" {
 		fileObs, err := handler.NewFileObserver(config.AuditFile, logger)
 		if err != nil {
-			logger.Error("failed to create db repo", zap.Error(err))
+			logger.Error("failed to create file observer", zap.Error(err))
 			return nil, err
 		}
 		publisher.Register(fileObs)
@@ -79,22 +79,26 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 
 func main() {
 	printBuildVars()
-	err := config.Load()
-	if err != nil {
+
+	if err := config.Load(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse config: %v\n", err)
 		os.Exit(1)
 	}
-
-	router := chi.NewRouter()
 
 	logger, err := zap.NewProduction()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
 		os.Exit(1)
 	}
+	defer logger.Sync()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	defer stop()
 
 	repo := chooseStorage(ctx, logger)
 
@@ -108,16 +112,8 @@ func main() {
 
 	publisher, err := makePublisher(logger)
 	if err != nil {
-		logger.Error("failed to init publisher: ", zap.Error(err))
-		os.Exit(1)
+		logger.Fatal("failed to init publisher", zap.Error(err))
 	}
-
-	go func() {
-		logger.Info("pprof started at :6060")
-		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-			logger.Error("pprof error: ", zap.Error(err))
-		}
-	}()
 
 	app := handler.App{
 		ShortenerService: shortenerService,
@@ -126,9 +122,11 @@ func main() {
 		Publisher:        publisher,
 	}
 
+	router := chi.NewRouter()
 	router.Use(logging.LoggingMiddleware(logger))
 	router.Use(cookies.AuthMiddleware([]byte(config.AuthSecret)))
 	router.Use(compres.GzipMiddleware)
+
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
@@ -137,7 +135,7 @@ func main() {
 	router.Get("/api/user/urls", app.HandleGetAllUserUrls)
 	router.Delete("/api/user/urls", app.HandleMarkDelete)
 
-	server := &http.Server{
+	mainServer := &http.Server{
 		Addr:         config.PortAddres,
 		Handler:      router,
 		ReadTimeout:  30 * time.Second,
@@ -145,43 +143,47 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	closeCh := make(chan struct{})
-	go shutDown(cancel, logger, server, closeCh)
-
-	var serverErr error
-	if config.EnableHTTPS {
-		serverErr = server.ListenAndServeTLS(config.CertHTTPS, config.KeyHTTPS)
-	} else {
-		serverErr = server.ListenAndServe()
+	pprofServer := &http.Server{
+		Addr:    "localhost:6060",
+		Handler: nil,
 	}
 
-	if serverErr != nil && serverErr != http.ErrServerClosed {
-		logger.Fatal("server error", zap.Error(err))
-	}
+	go func() {
+		logger.Info("main server started", zap.String("addr", config.PortAddres))
 
-	<-closeCh
-	logger.Info("server is stopped")
-}
+		var err error
+		if config.EnableHTTPS {
+			err = mainServer.ListenAndServeTLS(config.CertHTTPS, config.KeyHTTPS)
+		} else {
+			err = mainServer.ListenAndServe()
+		}
 
-func shutDown(cancel context.CancelFunc, logger *zap.Logger, server *http.Server, endChan chan struct{}) {
-	sigCh := make(chan os.Signal, 1)
+		if err != nil && err != http.ErrServerClosed {
+			logger.Fatal("main server error", zap.Error(err))
+		}
+	}()
 
-	signal.Notify(sigCh,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-	)
+	go func() {
+		logger.Info("pprof started", zap.String("addr", "localhost:6060"))
 
-	sig := <-sigCh
-	logger.Info("got signal ", zap.Any("sig", sig))
+		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("pprof server error", zap.Error(err))
+		}
+	}()
 
-	cancel()
+	<-ctx.Done()
+	logger.Info("shutdown signal received")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("shutdown error: ", zap.Error(err))
+
+	if err := mainServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("main server shutdown error", zap.Error(err))
 	}
 
-	close(endChan)
+	if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("pprof shutdown error", zap.Error(err))
+	}
+
+	logger.Info("servers stopped")
 }
