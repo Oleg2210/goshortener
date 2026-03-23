@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -100,6 +101,8 @@ func main() {
 	)
 	defer stop()
 
+	var wg sync.WaitGroup
+
 	repo := chooseStorage(ctx, logger)
 
 	shortenerService := service.NewShortenerService(
@@ -108,7 +111,7 @@ func main() {
 		config.MaxLength,
 	)
 
-	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
+	deleter := handler.NewDeleter(ctx, &wg, logger, shortenerService, 1)
 
 	publisher, err := makePublisher(logger)
 	if err != nil {
@@ -148,7 +151,9 @@ func main() {
 		Handler: nil,
 	}
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		logger.Info("main server started", zap.String("addr", config.PortAddres))
 
 		var err error
@@ -163,7 +168,9 @@ func main() {
 		}
 	}()
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		logger.Info("pprof started", zap.String("addr", "localhost:6060"))
 
 		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -185,5 +192,6 @@ func main() {
 		logger.Error("pprof shutdown error", zap.Error(err))
 	}
 
+	wg.Wait()
 	logger.Info("servers stopped")
 }
