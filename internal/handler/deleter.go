@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/Oleg2210/goshortener/internal/service"
 	"go.uber.org/zap"
@@ -18,16 +19,19 @@ type Deleter struct {
 	queue   chan DeleteTask
 	service *service.ShortenerService
 	logger  *zap.Logger
+	wg      *sync.WaitGroup
 }
 
-func NewDeleter(ctx context.Context, logger *zap.Logger, service *service.ShortenerService, workers int) *Deleter {
+func NewDeleter(ctx context.Context, wg *sync.WaitGroup, logger *zap.Logger, service *service.ShortenerService, workers int) *Deleter {
 	d := &Deleter{
 		ctx:     ctx,
 		queue:   make(chan DeleteTask, workers),
 		service: service,
 		logger:  logger,
+		wg:      wg,
 	}
 
+	wg.Add(1)
 	for i := 0; i < workers; i++ {
 		go d.worker()
 	}
@@ -36,6 +40,7 @@ func NewDeleter(ctx context.Context, logger *zap.Logger, service *service.Shorte
 }
 
 func (d *Deleter) worker() {
+	defer d.wg.Done()
 	for {
 		select {
 		case <-d.ctx.Done():

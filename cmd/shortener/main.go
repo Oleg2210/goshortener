@@ -6,6 +6,9 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
@@ -61,7 +64,7 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 	if config.AuditFile != "" {
 		fileObs, err := handler.NewFileObserver(config.AuditFile, logger)
 		if err != nil {
-			logger.Error("failed to create db repo", zap.Error(err))
+			logger.Error("failed to create file observer", zap.Error(err))
 			return nil, err
 		}
 		publisher.Register(fileObs)
@@ -77,17 +80,28 @@ func makePublisher(logger *zap.Logger) (*handler.AuditPublisher, error) {
 
 func main() {
 	printBuildVars()
-	config.Load()
-	router := chi.NewRouter()
+
+	if err := config.Load(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse config: %v\n", err)
+		os.Exit(1)
+	}
 
 	logger, err := zap.NewProduction()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to init zap logger: %v\n", err)
 		os.Exit(1)
 	}
+	defer logger.Sync()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	defer stop()
+
+	var wg sync.WaitGroup
 
 	repo := chooseStorage(ctx, logger)
 
@@ -97,20 +111,12 @@ func main() {
 		config.MaxLength,
 	)
 
-	deleter := handler.NewDeleter(ctx, logger, shortenerService, 1)
+	deleter := handler.NewDeleter(ctx, &wg, logger, shortenerService, 1)
 
 	publisher, err := makePublisher(logger)
 	if err != nil {
-		logger.Error("failed to init publisher: ", zap.Error(err))
-		os.Exit(1)
+		logger.Fatal("failed to init publisher", zap.Error(err))
 	}
-
-	go func() {
-		logger.Info("pprof started at :6060")
-		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-			logger.Error("pprof error: ", zap.Error(err))
-		}
-	}()
 
 	app := handler.App{
 		ShortenerService: shortenerService,
@@ -119,9 +125,11 @@ func main() {
 		Publisher:        publisher,
 	}
 
+	router := chi.NewRouter()
 	router.Use(logging.LoggingMiddleware(logger))
 	router.Use(cookies.AuthMiddleware([]byte(config.AuthSecret)))
 	router.Use(compres.GzipMiddleware)
+
 	router.Get("/{id}", app.HandleGet)
 	router.Post("/", app.HandlePost)
 	router.Post("/api/shorten", app.HandlePostJSON)
@@ -130,7 +138,7 @@ func main() {
 	router.Get("/api/user/urls", app.HandleGetAllUserUrls)
 	router.Delete("/api/user/urls", app.HandleMarkDelete)
 
-	server := &http.Server{
+	mainServer := &http.Server{
 		Addr:         config.PortAddres,
 		Handler:      router,
 		ReadTimeout:  30 * time.Second,
@@ -138,5 +146,52 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	server.ListenAndServe()
+	pprofServer := &http.Server{
+		Addr:    "localhost:6060",
+		Handler: nil,
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Info("main server started", zap.String("addr", config.PortAddres))
+
+		var err error
+		if config.EnableHTTPS {
+			err = mainServer.ListenAndServeTLS(config.CertHTTPS, config.KeyHTTPS)
+		} else {
+			err = mainServer.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
+			logger.Fatal("main server error", zap.Error(err))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Info("pprof started", zap.String("addr", "localhost:6060"))
+
+		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("pprof server error", zap.Error(err))
+		}
+	}()
+
+	<-ctx.Done()
+	logger.Info("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := mainServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("main server shutdown error", zap.Error(err))
+	}
+
+	if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("pprof shutdown error", zap.Error(err))
+	}
+
+	wg.Wait()
+	logger.Info("servers stopped")
 }
