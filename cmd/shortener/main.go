@@ -137,6 +137,7 @@ func main() {
 	router.Get("/ping", app.HandlePing)
 	router.Get("/api/user/urls", app.HandleGetAllUserUrls)
 	router.Delete("/api/user/urls", app.HandleMarkDelete)
+	router.Get("/api/internal/stats", app.HandleGetStatistic)
 
 	mainServer := &http.Server{
 		Addr:         config.PortAddres,

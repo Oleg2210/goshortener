@@ -176,3 +176,14 @@ func (repo *FileRepository) MarkDelete(ctx context.Context, shorts []string, use
 
 	return repo.saveToFile()
 }
+
+// GetStatistic returns all users and url counts
+func (repo *FileRepository) GetStatistic(ctx context.Context) (int, int, error) {
+	select {
+	case <-ctx.Done():
+		return 0, 0, ctx.Err()
+	default:
+	}
+
+	return len(repo.memoryRepo.data), len(repo.memoryRepo.userData), nil
+}

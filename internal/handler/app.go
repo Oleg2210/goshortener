@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -299,4 +300,51 @@ func (a *App) HandleMarkDelete(w http.ResponseWriter, r *http.Request) {
 	a.Deleter.queue <- DeleteTask{UserID: userID, Shorts: req}
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// HandleGetStatistic returns number of saved urls and users count
+// Checks a subnet
+func (a *App) HandleGetStatistic(w http.ResponseWriter, r *http.Request) {
+
+	if config.TrustedSubnet == "" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	ipStr := r.Header.Get("X-Real-IP")
+	if ipStr == "" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	ip := net.ParseIP(ipStr)
+	_, ipNet, err := net.ParseCIDR(config.TrustedSubnet)
+	if ip == nil || !ipNet.Contains(ip) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	urls, users, err := a.ShortenerService.GetInternalStatistic(r.Context())
+
+	if err != nil {
+		a.Logger.Error("error while GetInternalStatistic", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	response := serializers.StatiscticResponse{
+		Urls:  urls,
+		Users: users,
+	}
+
+	jsonBytes, err := response.MarshalJSON()
+	if err != nil {
+		a.Logger.Error("error in resonse serializing", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
 }
