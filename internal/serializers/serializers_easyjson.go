@@ -4,7 +4,6 @@ package serializers
 
 import (
 	json "encoding/json"
-
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
@@ -18,7 +17,83 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(in *jlexer.Lexer, out *Response) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(in *jlexer.Lexer, out *StatiscticResponse) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		switch key {
+		case "urls":
+			if in.IsNull() {
+				in.Skip()
+			} else {
+				out.Urls = int(in.Int())
+			}
+		case "users":
+			if in.IsNull() {
+				in.Skip()
+			} else {
+				out.Users = int(in.Int())
+			}
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(out *jwriter.Writer, in StatiscticResponse) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"urls\":"
+		out.RawString(prefix[1:])
+		out.Int(int(in.Urls))
+	}
+	{
+		const prefix string = ",\"users\":"
+		out.RawString(prefix)
+		out.Int(int(in.Users))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v StatiscticResponse) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v StatiscticResponse) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *StatiscticResponse) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *StatiscticResponse) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(l, v)
+}
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(in *jlexer.Lexer, out *Response) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -48,7 +123,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(in *j
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(out *jwriter.Writer, in Response) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(out *jwriter.Writer, in Response) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -63,27 +138,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(out *
 // MarshalJSON supports json.Marshaler interface
 func (v Response) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Response) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Response) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Response) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(in *jlexer.Lexer, out *Request) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(in *jlexer.Lexer, out *Request) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -113,7 +188,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(out *jwriter.Writer, in Request) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(out *jwriter.Writer, in Request) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -128,27 +203,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(out 
 // MarshalJSON supports json.Marshaler interface
 func (v Request) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Request) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers1(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Request) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Request) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers1(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(in *jlexer.Lexer, out *DeleteRequest) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(in *jlexer.Lexer, out *DeleteRequest) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -180,7 +255,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(out *jwriter.Writer, in DeleteRequest) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(out *jwriter.Writer, in DeleteRequest) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -198,27 +273,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(out 
 // MarshalJSON supports json.Marshaler interface
 func (v DeleteRequest) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v DeleteRequest) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers2(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *DeleteRequest) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *DeleteRequest) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers2(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(in *jlexer.Lexer, out *BatchResponseItemSlice) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(in *jlexer.Lexer, out *BatchResponseItemSlice) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -250,7 +325,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(out *jwriter.Writer, in BatchResponseItemSlice) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(out *jwriter.Writer, in BatchResponseItemSlice) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -268,27 +343,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(out 
 // MarshalJSON supports json.Marshaler interface
 func (v BatchResponseItemSlice) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v BatchResponseItemSlice) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers3(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *BatchResponseItemSlice) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *BatchResponseItemSlice) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers3(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(in *jlexer.Lexer, out *BatchResponseItem) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(in *jlexer.Lexer, out *BatchResponseItem) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -324,7 +399,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(out *jwriter.Writer, in BatchResponseItem) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(out *jwriter.Writer, in BatchResponseItem) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -344,27 +419,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(out 
 // MarshalJSON supports json.Marshaler interface
 func (v BatchResponseItem) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v BatchResponseItem) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers4(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *BatchResponseItem) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *BatchResponseItem) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers4(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(in *jlexer.Lexer, out *BatchRequestItemSlice) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(in *jlexer.Lexer, out *BatchRequestItemSlice) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -396,7 +471,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(out *jwriter.Writer, in BatchRequestItemSlice) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(out *jwriter.Writer, in BatchRequestItemSlice) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -414,27 +489,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(out 
 // MarshalJSON supports json.Marshaler interface
 func (v BatchRequestItemSlice) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v BatchRequestItemSlice) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers5(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *BatchRequestItemSlice) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *BatchRequestItemSlice) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers5(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(in *jlexer.Lexer, out *BatchRequestItem) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(in *jlexer.Lexer, out *BatchRequestItem) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -470,7 +545,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(out *jwriter.Writer, in BatchRequestItem) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(out *jwriter.Writer, in BatchRequestItem) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -490,27 +565,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(out 
 // MarshalJSON supports json.Marshaler interface
 func (v BatchRequestItem) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v BatchRequestItem) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers6(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *BatchRequestItem) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *BatchRequestItem) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers6(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(in *jlexer.Lexer, out *AllShortenResponseItemSlice) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(in *jlexer.Lexer, out *AllShortenResponseItemSlice) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -542,7 +617,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(out *jwriter.Writer, in AllShortenResponseItemSlice) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(out *jwriter.Writer, in AllShortenResponseItemSlice) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -560,27 +635,27 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(out 
 // MarshalJSON supports json.Marshaler interface
 func (v AllShortenResponseItemSlice) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v AllShortenResponseItemSlice) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers7(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *AllShortenResponseItemSlice) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *AllShortenResponseItemSlice) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers7(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(l, v)
 }
-func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(in *jlexer.Lexer, out *AllShortenResponseItem) {
+func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers9(in *jlexer.Lexer, out *AllShortenResponseItem) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -616,7 +691,7 @@ func easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(in *
 		in.Consumed()
 	}
 }
-func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(out *jwriter.Writer, in AllShortenResponseItem) {
+func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers9(out *jwriter.Writer, in AllShortenResponseItem) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -636,23 +711,23 @@ func easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(out 
 // MarshalJSON supports json.Marshaler interface
 func (v AllShortenResponseItem) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(&w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers9(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v AllShortenResponseItem) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers8(w, v)
+	easyjsonA970e379EncodeGithubComOleg2210GoshortenerInternalSerializers9(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *AllShortenResponseItem) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(&r, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers9(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *AllShortenResponseItem) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers8(l, v)
+	easyjsonA970e379DecodeGithubComOleg2210GoshortenerInternalSerializers9(l, v)
 }

@@ -33,4 +33,7 @@ type URLRepository interface {
 
 	// MarkDelete marks a list of short URLs as deleted for a specific user.
 	MarkDelete(ctx context.Context, short []string, userID string) error
+
+	//GetStatistic returns all users and url counts
+	GetStatistic(ctx context.Context) (int, int, error)
 }

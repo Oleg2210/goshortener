@@ -30,6 +30,7 @@ var (
 	AuditURL        string
 	EnableHTTPS     bool
 	ConfigFile      string
+	TrustedSubnet   string
 )
 
 func Load() error {
@@ -41,6 +42,7 @@ func Load() error {
 	flag.StringVar(&AuditURL, "audit-url", "", "audit url")
 	flag.BoolVar(&EnableHTTPS, "s", false, "enable https")
 	flag.StringVar(&ConfigFile, "c", "", "config file path")
+	flag.StringVar(&TrustedSubnet, "t", "", "trusted subnet")
 
 	flag.Parse()
 
@@ -62,6 +64,7 @@ func Load() error {
 	v.BindEnv("audit_file", "AUDIT_FILE")
 	v.BindEnv("audit_url", "AUDIT_URL")
 	v.BindEnv("enable_https", "ENABLE_HTTPS")
+	v.BindEnv("trusted_subnet", "TRUSTED_SUBNET")
 	v.BindEnv("config", "CONFIG")
 
 	if ConfigFile == "" {
@@ -94,6 +97,9 @@ func Load() error {
 	if AuditURL != "" {
 		v.Set("audit_url", AuditURL)
 	}
+	if TrustedSubnet != "" {
+		v.Set("trusted_subnet", TrustedSubnet)
+	}
 	if EnableHTTPS {
 		v.Set("enable_https", true)
 	}
@@ -106,6 +112,7 @@ func Load() error {
 	AuditFile = v.GetString("audit_file")
 	AuditURL = v.GetString("audit_url")
 	EnableHTTPS = v.GetBool("enable_https")
+	TrustedSubnet = v.GetString("trusted_subnet")
 
 	return nil
 }
