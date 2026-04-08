@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/handler"
+	proto_serializers "github.com/Oleg2210/goshortener/internal/protobuf"
 	"github.com/Oleg2210/goshortener/internal/repository"
 	"github.com/Oleg2210/goshortener/internal/service"
 	compres "github.com/Oleg2210/goshortener/pkg/middleware/compress"
@@ -20,6 +23,7 @@ import (
 	"github.com/Oleg2210/goshortener/pkg/middleware/logging"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -137,6 +141,7 @@ func main() {
 	router.Get("/ping", app.HandlePing)
 	router.Get("/api/user/urls", app.HandleGetAllUserUrls)
 	router.Delete("/api/user/urls", app.HandleMarkDelete)
+	router.Get("/api/internal/stats", app.HandleGetStatistic)
 
 	mainServer := &http.Server{
 		Addr:         config.PortAddres,
@@ -150,6 +155,15 @@ func main() {
 		Addr:    "localhost:6060",
 		Handler: nil,
 	}
+
+	grpcListener, err := net.Listen("tcp", ":9090")
+	if err != nil {
+		logger.Fatal("failed to listen tcp", zap.Error(err))
+	}
+	grpcServer := grpc.NewServer()
+	proto_serializers.RegisterShortenerServiceServer(grpcServer, &handler.GRPCServer{
+		App: &app,
+	})
 
 	wg.Add(1)
 	go func() {
@@ -178,6 +192,15 @@ func main() {
 		}
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Info("grpc server started", zap.String("addr", ":9090"))
+		if err := grpcServer.Serve(grpcListener); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	<-ctx.Done()
 	logger.Info("shutdown signal received")
 
@@ -191,6 +214,8 @@ func main() {
 	if err := pprofServer.Shutdown(shutdownCtx); err != nil {
 		logger.Error("pprof shutdown error", zap.Error(err))
 	}
+
+	grpcServer.Stop()
 
 	wg.Wait()
 	logger.Info("servers stopped")

@@ -45,3 +45,9 @@ type AllShortenResponseItemSlice []AllShortenResponseItem
 
 //easyjson:json
 type DeleteRequest []string
+
+//easyjson:json
+type StatiscticResponse struct {
+	Urls  int `json:"urls"`
+	Users int `json:"users"`
+}

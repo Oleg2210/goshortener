@@ -108,3 +108,8 @@ func (service *ShortenerService) GetUserShortens(ctx context.Context, userID str
 func (service *ShortenerService) MarkDelete(ctx context.Context, shorts []string, userID string) error {
 	return service.repo.MarkDelete(ctx, shorts, userID)
 }
+
+// GetInternalStatistic returns all users and url counts
+func (service *ShortenerService) GetInternalStatistic(ctx context.Context) (int, int, error) {
+	return service.repo.GetStatistic(ctx)
+}

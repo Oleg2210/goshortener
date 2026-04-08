@@ -1,20 +1,27 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/Oleg2210/goshortener/internal/config"
 	"github.com/Oleg2210/goshortener/internal/entities"
+	proto_serializers "github.com/Oleg2210/goshortener/internal/protobuf"
 	"github.com/Oleg2210/goshortener/internal/serializers"
 	"github.com/Oleg2210/goshortener/internal/service"
 	"github.com/Oleg2210/goshortener/pkg/middleware/cookies"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // App represents the main HTTP application with services, logger, deleter, and audit publisher.
@@ -299,4 +306,137 @@ func (a *App) HandleMarkDelete(w http.ResponseWriter, r *http.Request) {
 	a.Deleter.queue <- DeleteTask{UserID: userID, Shorts: req}
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// HandleGetStatistic returns number of saved urls and users count
+// Checks a subnet
+func (a *App) HandleGetStatistic(w http.ResponseWriter, r *http.Request) {
+
+	if config.TrustedSubnet == "" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	ipStr := r.Header.Get("X-Real-IP")
+	if ipStr == "" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	ip := net.ParseIP(ipStr)
+	_, ipNet, err := net.ParseCIDR(config.TrustedSubnet)
+	if ip == nil || !ipNet.Contains(ip) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	urls, users, err := a.ShortenerService.GetInternalStatistic(r.Context())
+
+	if err != nil {
+		a.Logger.Error("error while GetInternalStatistic", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	response := serializers.StatiscticResponse{
+		Urls:  urls,
+		Users: users,
+	}
+
+	jsonBytes, err := response.MarshalJSON()
+	if err != nil {
+		a.Logger.Error("error in resonse serializing", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
+
+type GRPCServer struct {
+	proto_serializers.UnimplementedShortenerServiceServer
+	App *App
+}
+
+func getUserIDFromMetadata(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+
+	auth := md.Get("authorization")
+	if len(auth) == 0 {
+		return ""
+	}
+
+	return auth[0] // тут можешь распарсить токен если нужно
+}
+
+func (s *GRPCServer) ShortenURL(ctx context.Context, req *proto_serializers.URLShortenRequest) (*proto_serializers.URLShortenResponse, error) {
+	userID := getUserIDFromMetadata(ctx)
+
+	id, err := s.App.ShortenerService.Shorten(ctx, req.Url, userID)
+	if err != nil {
+		if errors.Is(err, service.ErrURLExists) {
+			return nil, status.Error(codes.AlreadyExists, "url already exists")
+		}
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	resultURL, err := url.JoinPath(config.ResolveAddress, id)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &proto_serializers.URLShortenResponse{
+		Result: resultURL,
+	}, nil
+}
+
+func (s *GRPCServer) ExpandURL(ctx context.Context, req *proto_serializers.URLExpandRequest) (*proto_serializers.URLExpandResponse, error) {
+	urlData, err := s.App.ShortenerService.GetURL(ctx, req.Id)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	if urlData.IsDeleted {
+		return nil, status.Error(codes.FailedPrecondition, "url deleted")
+	}
+
+	return &proto_serializers.URLExpandResponse{
+		Result: urlData.OriginalURL,
+	}, nil
+}
+
+func (s *GRPCServer) ListUserURLs(ctx context.Context, _ *emptypb.Empty) (*proto_serializers.UserURLsResponse, error) {
+	userID := getUserIDFromMetadata(ctx)
+
+	records, err := s.App.ShortenerService.GetUserShortens(ctx, userID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if len(records) == 0 {
+		return &proto_serializers.UserURLsResponse{}, nil
+	}
+
+	resp := &proto_serializers.UserURLsResponse{
+		Url: make([]*proto_serializers.URLData, 0, len(records)),
+	}
+
+	for _, r := range records {
+		shortURL, err := url.JoinPath(config.ResolveAddress, r.Short)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		resp.Url = append(resp.Url, &proto_serializers.URLData{
+			ShortUrl:    shortURL,
+			OriginalUrl: r.OriginalURL,
+		})
+	}
+
+	return resp, nil
 }

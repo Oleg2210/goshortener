@@ -161,3 +161,25 @@ func (repo *DBRepository) MarkDelete(ctx context.Context, shorts []string, userI
 
 	return tx.Commit()
 }
+
+// GetStatistic returns all users and url counts
+func (repo *DBRepository) GetStatistic(ctx context.Context) (int, int, error) {
+	var urls, users int
+
+	result := repo.DB.QueryRowContext(
+		ctx,
+		`SELECT
+    	COUNT(*) AS urls,
+		COUNT(DISTINCT user_id) AS users
+		FROM urls
+		WHERE is_deleted = false;`,
+	)
+
+	err := result.Scan(&urls, &users)
+
+	if err != nil {
+		return urls, users, err
+	}
+
+	return urls, users, err
+}

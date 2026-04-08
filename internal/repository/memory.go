@@ -168,3 +168,14 @@ func (repo *MemoryRepository) MarkDelete(ctx context.Context, shorts []string, u
 
 	return nil
 }
+
+// GetStatistic returns all users and url counts
+func (repo *MemoryRepository) GetStatistic(ctx context.Context) (int, int, error) {
+	select {
+	case <-ctx.Done():
+		return 0, 0, ctx.Err()
+	default:
+	}
+
+	return len(repo.data), len(repo.userData), nil
+}
